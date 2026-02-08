@@ -27,6 +27,9 @@
 - [x] Connection selection + Delete key deletion
 - [x] Animated request packets (visual-only, RAF loop, color-coded by request type)
 - [x] Save/Load with LocalStorage (auto-save via effect, auto-load on init)
+- [x] Typed StorageService wrapper for localStorage
+- [x] Service drag-to-move on the grid
+- [x] Undo/Redo system (Ctrl+Z / Ctrl+Shift+Z, toolbar buttons, snapshot-based)
 
 ---
 
@@ -135,14 +138,14 @@ canConnect(source, target) // validates port directions, duplicates, self-connec
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Typed LocalStorage wrapper (StorageService)
-2. Service drag-to-move on the grid
-3. Undo/Redo system
+1. Responsive grid (zoom/pan)
+2. Cascading failure visualization
+3. Challenge mode
 
 ### Future
-- Cascading failure visualization
-- Challenge mode
-- Responsive grid (zoom/pan)
+- Service configuration editing (processing time, queue size)
+- Metrics dashboard (throughput, latency)
+- Import/export layouts
 
 ---
 
