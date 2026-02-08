@@ -1,0 +1,57 @@
+---
+globs: *.ts,*.html,*.scss
+description: Component naming and file organization conventions
+---
+
+# Component Naming & File Organization
+
+## Naming Convention Priority
+**Prioritize component type over specificity** for better alphabetical organization:
+
+### Good Examples:
+- `card-user` instead of `user-card`
+- `card-image` instead of `image-card`
+- `button-primary` instead of `primary-button`
+- `form-login` instead of `login-form`
+
+### Directory Structure
+When many similar components are created, consider creating a dedicated directory:
+- `/components/card/` - for all card-related components
+- `/components/button/` - for all button-related components
+- `/components/form/` - for all form-related components
+
+## File Organization
+
+### Pages vs Components
+- **Pages** (no selector, direct route access) go in `/pages/` directory
+- **Reusable components** go in `/components/` directory
+- **Pages should be "dumb"** - contain minimal logic, only display components
+- **All business logic should be in components**, not pages
+
+### Component Placement
+When creating a component in `/components/`, check the directory tree structure to find the best place:
+- Look for existing similar components
+- Consider creating subdirectories for related components
+- Follow the established pattern in the codebase
+
+## File Naming
+- Use kebab-case for file names: `card-customer-row.component.ts`
+- Use PascalCase for class names: `CardCustomerRowComponent`
+- Use kebab-case for selectors: `app-card-customer-row`
+
+## Example Structure
+```
+/components/
+  /card/
+    card-user/
+      card-user.component.ts
+      card-user.component.html
+      card-user.component.scss
+    card-image/
+      card-image.component.ts
+      card-image.component.html
+      card-image.component.scss
+  /button/
+    button-primary/
+    button-secondary/
+```

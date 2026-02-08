@@ -34,6 +34,24 @@
 | **TailwindCSS** | 4.1.18 | v4 with PostCSS, utility-first styling |
 | **Lucide** | 0.563.0 | Rounded icon style matches aesthetic |
 | **Bun** | Runtime | Fast package manager and runtime |
+| **Biome** | 2.3.14 | Linting and formatting (replaces ESLint + Prettier) |
+
+### Code Conventions
+
+**IMPORTANT:** Check `.cursor/rules/conventions/` for detailed coding standards:
+- `angular-standalone.mdc` - Standalone components, modern syntax (@if, @for), Signals, inject()
+- `component-naming.mdc` - Naming conventions for components
+- `component-structure.mdc` - Component file organization
+- `development-workflow.mdc` - Development process guidelines
+- `typescript-strict.mdc` - TypeScript strict mode rules
+
+**Formatting & Linting (Biome):**
+```bash
+bun run lint        # Check for lint errors
+bun run format      # Format code
+bun run check       # Check both lint + format
+bun run check:fix   # Fix all auto-fixable issues
+```
 
 ### Key Architectural Choices
 1. **No Three.js wrappers** - We manage the canvas manually for full control

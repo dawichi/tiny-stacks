@@ -1,0 +1,82 @@
+---
+globs: *.ts,*.html
+description: Angular standalone components and modern syntax rules
+---
+
+# Angular Standalone Components & Modern Syntax
+
+## Standalone Components
+- **ALL new components MUST be standalone** - we are progressively moving from modules-based Angular to standalone system for future Angular version updates
+- Use `standalone: true` in component decorator
+- Import dependencies directly in the component's `imports` array
+- Example structure:
+```typescript
+@Component({
+    standalone: true,
+    imports: [CommonModule, TranslateModule, ButtonModule],
+    selector: 'app-component-name',
+    templateUrl: './component-name.component.html',
+    styleUrls: ['./component-name.component.scss'],
+})
+```
+
+## Modern Angular Syntax
+- **Use new control flow syntax instead of structural directives:**
+  - Replace `*ngIf` with `@if()`
+  - Replace `*ngFor` with `@for()`
+  - Replace `*ngSwitch` with `@switch()`
+  - Example:
+    ```html
+    <!-- OLD - do not use -->
+    <div *ngIf="condition">Content</div>
+    <div *ngFor="let item of items">{{ item.name }}</div>
+
+    <!-- NEW - use this -->
+    @if (condition) {
+        <div>Content</div>
+    }
+    @for (item of items; track item.id) {
+        <div>{{ item.name }}</div>
+    }
+
+    <!-- With else -->
+    @if (isLoading) {
+        <p-progressSpinner></p-progressSpinner>
+    } @else {
+        <div>Content loaded</div>
+    }
+    ```
+
+## Signals
+Use Angular signals for reactive state:
+
+```typescript
+// Simple signal
+protected loaded = signal(false);
+
+// Computed signal (derived state)
+protected readonly isFeatureEnabled = computed(() => {
+    const data = this.service.data$();
+    return data?.feature === true;
+});
+
+// Reading signals in template
+@if (loaded()) {
+    <div>Content</div>
+}
+```
+
+## Dependency Injection
+- **Prioritize new inject() syntax** over constructor injection
+- Place all injected services at the top of the class
+- Use `private readonly` for services
+- Example:
+```typescript
+export class MyComponent {
+    private readonly router = inject(Router);
+    private readonly translate = inject(TranslateService);
+    private readonly dataService = inject(DataService);
+
+    // ... rest of component
+}
+```

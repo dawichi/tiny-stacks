@@ -1,0 +1,48 @@
+---
+alwaysApply: true
+description: Development workflow and decision-making process
+---
+
+# Development Workflow & Decision Making
+
+## When in Doubt, Ask
+- **Always present a plan** before implementing complex changes
+- **Ask the developer** if unsure about:
+  - Creating a new directory structure
+  - Extracting a component into smaller blocks
+  - Component placement and organization
+  - Any architectural decisions
+
+## Component Extraction Strategy
+When a component becomes too large:
+1. **Identify logical blocks** that can be extracted
+2. **Present a plan** for component division
+3. **Wait for developer approval** before proceeding
+4. **Extract components** following the established patterns
+5. **Ensure each component is self-contained** with its own logic, structure, and styles
+
+## Code Quality Standards
+- **Follow the established patterns** in the codebase
+- **Maintain consistency** with existing component structure
+- **Prioritize maintainability** over quick fixes
+- **Document complex logic** with clear comments
+- **Use TODO comments** for temporary solutions that need future improvement
+
+## Example Decision Process
+```
+When creating a new user management component:
+
+1. Analyze existing patterns in /components/admin/
+2. Determine if it should be:
+   - A new component in /components/admin/
+   - A new subdirectory like /components/admin/user-management/
+   - An extraction from an existing large component
+
+3. Present options to developer:
+   "I found similar components in /components/admin/. Should I:
+   - Create a new component in the existing admin directory?
+   - Create a new user-management subdirectory?
+   - Extract this from the existing large component?"
+
+4. Wait for approval before proceeding
+```
