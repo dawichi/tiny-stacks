@@ -40,6 +40,9 @@ export class GameStateService {
     // Selected service for inspector
     readonly selectedServiceId = signal<string | null>(null);
 
+    // Currently dragged service type (for placement preview)
+    readonly draggingType = signal<ServiceType | null>(null);
+
     // Derived: get selected service
     readonly selectedService = computed(() => {
         const id = this.selectedServiceId();

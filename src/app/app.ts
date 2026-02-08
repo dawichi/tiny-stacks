@@ -1,11 +1,11 @@
-import { Component, inject, OnInit } from '@angular/core';
-import { GameStateService } from './core/game/game-state.service';
+import { Component } from '@angular/core';
 import { GameBoardComponent } from './features/board/game-board.component';
+import { ServicePaletteComponent } from './features/palette/service-palette.component';
 
 @Component({
     selector: 'app-root',
     standalone: true,
-    imports: [GameBoardComponent],
+    imports: [GameBoardComponent, ServicePaletteComponent],
     template: `
     <main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
       <header class="max-w-4xl mx-auto mb-6">
@@ -16,14 +16,9 @@ import { GameBoardComponent } from './features/board/game-board.component';
       <div class="flex justify-center">
         <app-game-board />
       </div>
+
+      <app-service-palette />
     </main>
   `,
 })
-export class App implements OnInit {
-    private readonly gameState = inject(GameStateService);
-
-    ngOnInit(): void {
-        // Add demo services on startup
-        this.gameState.addDemoServices();
-    }
-}
+export class App {}
