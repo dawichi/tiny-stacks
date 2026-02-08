@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+/* Custom styles */
+:root {
+  /* Pastel Color Palette */
+  --color-peach: #FFCBA4;
+  --color-coral: #FF8B8B;
+  --color-cream: #FFF5E1;
+  --color-soft-gold: #FFE5A0;
+  --color-mint: #A8E6CF;
+  --color-lavender: #D4A5FF;
+  --color-sky-blue: #87CEEB;
+  --color-soft-teal: #88D8D8;
+  --color-slate: #708090;
+  --color-soft-gray: #B8C4CE;
+  --color-off-white: #FAF9F6;
+
+  /* Request type colors */
+  --color-get: #87CEEB;
+  --color-post: #A8E6CF;
+  --color-put: #FFE5A0;
+  --color-delete: #FFCBA4;
+  --color-error: #FF8B8B;
+  --color-success: #A8E6CF;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--color-off-white) 0%, var(--color-soft-gray) 100%);
+}
