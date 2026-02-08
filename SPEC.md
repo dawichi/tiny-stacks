@@ -1,8 +1,8 @@
 # tiny-stacks - Project Specification
 
-> The "Factorio" of DevOps - An Isometric Microservices Simulation Game
+> The "Factorio" of DevOps - A 2D Microservices Simulation Game
 
-**Version:** 1.0.0
+**Version:** 2.0.0
 **Type:** Portfolio-Ready Web Experience
 **URL Structure:** Single Page Application (SPA) - No Backend (LocalStorage only)
 
@@ -10,7 +10,9 @@
 
 ## 1. Executive Summary
 
-**tiny-stacks** is a visually stunning, isometric simulation game where players design and manage microservice architectures. Think Factorio meets DevOps - players place services on a grid, connect them with pipes, and watch requests flow through their system as animated packets. The goal is to create a portfolio-ready web experience that showcases technical mastery and product vision.
+**tiny-stacks** is a clean, 2D top-down simulation game where players design and manage microservice architectures. Think Shapez meets DevOps - players place services on a grid, connect them with lines, and watch requests flow through their system as animated packets. The goal is to create a portfolio-ready web experience that showcases technical mastery and product vision.
+
+**Note:** Originally designed as 3D isometric, refactored to 2D for simplicity and focus on UI/UX.
 
 ---
 
@@ -18,59 +20,54 @@
 
 | Layer | Technology | Notes |
 |-------|------------|-------|
-| **Framework** | Angular 21+ | Bleeding edge: Signals, Standalone Components, Zoneless if applicable |
-| **3D Engine** | Three.js (Vanilla) | NO wrappers. Manual canvas management |
-| **Styling** | TailwindCSS v4 | Minimal SCSS only for complex keyframe animations |
-| **Icons** | Lucide-Angular | Rounded style preferred |
-| **Build** | Vite / Angular CLI | Default configuration |
+| **Framework** | Angular 21+ | Signals, Standalone Components |
+| **Rendering** | Pure HTML/CSS/SVG | No canvas/WebGL - DOM-based |
+| **Styling** | TailwindCSS v4 | Utility-first styling |
+| **Icons** | Lucide-Angular | SVG icons for services |
+| **Build** | Angular CLI | Default configuration |
 | **Package Manager** | Bun | For all installs and scripts |
-| **State Management** | Pure Angular Signals | Lightweight, reactive, perfect for game state |
+| **State Management** | Pure Angular Signals | Lightweight, reactive |
+| **Linting** | Biome | Replaces ESLint + Prettier |
 
 ---
 
 ## 3. Visual Aesthetic ("The Vibe")
 
 ### 3.1 Core Style
-- **Visual Language:** Claymorphism / Toy-like / Soft 3D
-- **Camera:** Isometric Orthographic Projection (diorama feel)
-- **Background:** Soft gradient or off-white (NEVER pure black)
+- **Visual Language:** Clean 2D / Flat design with soft shadows
+- **View:** Top-down grid (Shapez-like)
+- **Background:** Soft slate gradient
 
-### 3.2 Geometry Rules
-- All meshes use `BoxGeometry` with **bevels/rounded corners**
-- No sharp edges - everything looks soft and touchable
-- Services occupy **multiple grid cells** based on type (Factorio-style)
+### 3.2 Layout
+- CSS Grid for game board
+- Services as styled divs with SVG icons
+- Connection lines as SVG paths
+- Subtle grid lines for cell boundaries
 
-### 3.3 Materials
-```
-MeshPhysicalMaterial or MeshStandardMaterial
-├── Low roughness (~0.3-0.5)
-├── Slight clearcoat (~0.2)
-└── Simulates matte plastic/clay finish
-```
-
-### 3.4 Color Palette (Mixed Pastels)
+### 3.3 Color Palette (Mixed Pastels)
 | Category | Colors |
 |----------|--------|
 | **Warm** | Peach (#FFCBA4), Coral (#FF8B8B), Cream (#FFF5E1), Soft Gold (#FFE5A0) |
 | **Cool** | Mint (#A8E6CF), Lavender (#D4A5FF), Sky Blue (#87CEEB), Soft Teal (#88D8D8) |
 | **Neutrals** | Slate (#708090), Soft Gray (#B8C4CE), Off-White (#FAF9F6) |
 
-### 3.5 Lighting Setup
-- **Primary:** Soft directional light with soft shadows
-- **Secondary:** Ambient light for fill
-- **Shadows:** `PCFSoftShadowMap` (high quality)
+### 3.4 Service Styling
+- Rounded corners (rounded-lg)
+- Pastel background colors
+- Lucide icons centered
+- Soft drop shadows
+- Hover scale effect
 
 ---
 
 ## 4. Asset Strategy
 
-**CRITICAL: NO EXTERNAL ASSETS**
+**SVG-BASED APPROACH**
 
-- No `.gltf`, `.obj`, `.fbx` files
-- No `.png` textures
-- Everything is **procedurally generated** via code/shaders
-- UI elements are HTML/CSS overlaying the canvas
-- Glassmorphism effects for panels
+- Lucide icons for service types (globe, server, database, etc.)
+- SVG paths for connection lines
+- CSS animations for request packets
+- No external image files needed
 
 ---
 
@@ -87,17 +84,17 @@ MeshPhysicalMaterial or MeshStandardMaterial
 
 | Property | Value |
 |----------|-------|
-| **Type** | Isometric square grid |
-| **Visibility** | Subtle lines (very faint), highlighted on drag |
-| **Placement Feedback** | Green = valid placement, Red = invalid |
-| **Size** | Variable per mode (Sandbox: 20x20 default, Challenges: varies) |
+| **Type** | 2D top-down square grid |
+| **Size** | 20x14 cells (default), 48px per cell |
+| **Visibility** | Subtle lines (slate @ 30% opacity) |
+| **Placement Feedback** | Green = valid, Red = invalid |
 
 ### 5.3 Service Types (DevOps Classic)
 
-| Service | Grid Size | Color | Description |
-|---------|-----------|-------|-------------|
-| **API Gateway** | 3x2 | Soft Teal | Entry point, routes requests |
-| **REST Service** | 2x2 | Sky Blue | Processes business logic |
+| Service | Grid Size | Color | Icon | Description |
+|---------|-----------|-------|------|-------------|
+| **API Gateway** | 3x2 | #88D8D8 (Teal) | globe | Entry point, routes requests |
+| **REST Service** | 2x2 | #87CEEB (Sky Blue) | server | Processes business logic |
 | **Database** | 3x3 | Lavender | Persistent storage, slow but reliable |
 | **Cache** | 2x1 | Mint | Fast lookup, limited capacity |
 | **Message Queue** | 2x3 | Peach | Async processing, buffers requests |

@@ -25,7 +25,7 @@ export enum PortDirection {
 export interface PortConfig {
     /** Relative position within the service footprint (0-based) */
     cellOffsetX: number;
-    cellOffsetZ: number;
+    cellOffsetY: number;
     /** Which edge of the cell the port is on */
     edge: "north" | "south" | "east" | "west";
     /** Port direction */
@@ -39,13 +39,13 @@ export interface ServiceTypeConfig {
     type: ServiceType;
     name: string;
     description: string;
-    /** Grid footprint size */
+    /** Grid footprint size (in cells) */
     gridWidth: number;
     gridHeight: number;
-    /** Visual properties */
-    color: number;
-    /** Height of the mesh (in world units) */
-    meshHeight: number;
+    /** CSS color for the service */
+    color: string;
+    /** Lucide icon name */
+    icon: string;
     /** Connection ports */
     ports: PortConfig[];
     /** Simulation properties */
@@ -64,11 +64,11 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Entry point for all requests. Routes traffic to appropriate services.",
         gridWidth: 3,
         gridHeight: 2,
-        color: 0x88d8d8, // Soft Teal
-        meshHeight: 1.2,
+        color: "#88D8D8", // Soft Teal
+        icon: "globe",
         ports: [
-            { cellOffsetX: 0, cellOffsetZ: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 2, cellOffsetZ: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
+            { cellOffsetX: 2, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 10,
         maxConcurrency: 100,
@@ -81,11 +81,11 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Processes business logic. Handles API requests.",
         gridWidth: 2,
         gridHeight: 2,
-        color: 0x87ceeb, // Sky Blue
-        meshHeight: 1.0,
+        color: "#87CEEB", // Sky Blue
+        icon: "server",
         ports: [
-            { cellOffsetX: 0, cellOffsetZ: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetZ: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 50,
         maxConcurrency: 20,
@@ -98,9 +98,9 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Persistent data storage. Slower but reliable.",
         gridWidth: 3,
         gridHeight: 3,
-        color: 0xd4a5ff, // Lavender
-        meshHeight: 1.5,
-        ports: [{ cellOffsetX: 1, cellOffsetZ: 0, edge: "north", direction: PortDirection.BIDIRECTIONAL }],
+        color: "#D4A5FF", // Lavender
+        icon: "database",
+        ports: [{ cellOffsetX: 1, cellOffsetY: 0, edge: "north", direction: PortDirection.BIDIRECTIONAL }],
         baseProcessingTime: 100,
         maxConcurrency: 10,
         queueSize: 50,
@@ -112,9 +112,9 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Fast in-memory storage. Limited capacity.",
         gridWidth: 2,
         gridHeight: 1,
-        color: 0xa8e6cf, // Mint
-        meshHeight: 0.8,
-        ports: [{ cellOffsetX: 0, cellOffsetZ: 0, edge: "west", direction: PortDirection.BIDIRECTIONAL }],
+        color: "#A8E6CF", // Mint
+        icon: "zap",
+        ports: [{ cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.BIDIRECTIONAL }],
         baseProcessingTime: 5,
         maxConcurrency: 50,
         queueSize: 200,
@@ -126,11 +126,11 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Async processing buffer. Handles bursts of traffic.",
         gridWidth: 2,
         gridHeight: 3,
-        color: 0xffcba4, // Peach
-        meshHeight: 1.3,
+        color: "#FFCBA4", // Peach
+        icon: "mail",
         ports: [
-            { cellOffsetX: 0, cellOffsetZ: 0, edge: "north", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetZ: 2, edge: "south", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: "north", direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 2, edge: "south", direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 20,
         maxConcurrency: 1,
@@ -143,12 +143,12 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         description: "Distributes requests across multiple services.",
         gridWidth: 2,
         gridHeight: 2,
-        color: 0xffe5a0, // Soft Gold
-        meshHeight: 1.0,
+        color: "#FFE5A0", // Soft Gold
+        icon: "split",
         ports: [
-            { cellOffsetX: 0, cellOffsetZ: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetZ: 0, edge: "east", direction: PortDirection.OUTPUT },
-            { cellOffsetX: 1, cellOffsetZ: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 0, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 1, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 2,
         maxConcurrency: 200,
