@@ -64,6 +64,56 @@ export function computeBezierPath(from: PortPosition, to: PortPosition): string 
 }
 
 /**
+ * Cubic Bezier curve defined by four control points
+ */
+export interface BezierCurve {
+    start: { x: number; y: number };
+    cp1: { x: number; y: number };
+    cp2: { x: number; y: number };
+    end: { x: number; y: number };
+}
+
+/**
+ * Get the Bezier curve control points for a connection between two ports
+ */
+export function getConnectionBezier(
+    srcService: PlacedService,
+    srcPortIndex: number,
+    tgtService: PlacedService,
+    tgtPortIndex: number,
+    cellSize: number,
+): BezierCurve {
+    const from = getPortAbsolutePosition(srcService, srcPortIndex, cellSize);
+    const to = getPortAbsolutePosition(tgtService, tgtPortIndex, cellSize);
+
+    const distance = Math.hypot(to.x - from.x, to.y - from.y);
+    const offset = Math.max(40, distance * 0.4);
+
+    return {
+        start: { x: from.x, y: from.y },
+        cp1: offsetFromEdge(from, offset),
+        cp2: offsetFromEdge(to, offset),
+        end: { x: to.x, y: to.y },
+    };
+}
+
+/**
+ * Evaluate a cubic Bezier curve at parameter t (0→1), returning the {x, y} position
+ */
+export function evaluateBezier(t: number, curve: BezierCurve): { x: number; y: number } {
+    const mt = 1 - t;
+    const mt2 = mt * mt;
+    const mt3 = mt2 * mt;
+    const t2 = t * t;
+    const t3 = t2 * t;
+
+    return {
+        x: mt3 * curve.start.x + 3 * mt2 * t * curve.cp1.x + 3 * mt * t2 * curve.cp2.x + t3 * curve.end.x,
+        y: mt3 * curve.start.y + 3 * mt2 * t * curve.cp1.y + 3 * mt * t2 * curve.cp2.y + t3 * curve.end.y,
+    };
+}
+
+/**
  * Compute a cubic Bezier SVG path from a port to an arbitrary cursor position (for drag preview)
  */
 export function computePreviewPath(from: PortPosition, cursorX: number, cursorY: number): string {

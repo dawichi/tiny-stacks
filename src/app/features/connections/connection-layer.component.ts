@@ -26,6 +26,17 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
         />
       }
 
+      <!-- Packets -->
+      @for (packet of packets(); track $index) {
+        <circle
+          [attr.cx]="packet.x"
+          [attr.cy]="packet.y"
+          r="5"
+          [attr.fill]="packet.color"
+          class="packet"
+        />
+      }
+
       <!-- Drag preview -->
       @if (previewPath()) {
         <path
@@ -52,6 +63,9 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
     .connection-path.selected {
       filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
     }
+    .packet {
+      filter: drop-shadow(0 0 4px var(--packet-color, rgba(255, 255, 255, 0.6)));
+    }
   `,
     ],
 })
@@ -63,6 +77,7 @@ export class ConnectionLayerComponent {
     readonly boardWidth = input.required<number>();
     readonly boardHeight = input.required<number>();
     readonly selectedConnectionId = input<string | null>(null);
+    readonly packets = input<{ x: number; y: number; color: string }[]>([]);
     readonly dragPreviewSource = input<PortRef | null>(null);
     readonly dragPreviewCursor = input<{ x: number; y: number } | null>(null);
 

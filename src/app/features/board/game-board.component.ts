@@ -1,6 +1,8 @@
 import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
+import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
+import { SimulationService } from '../../core/game/simulation.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
 
@@ -31,6 +33,19 @@ interface HoverPosition {
         [style.background-size]="cellSize() + 'px ' + cellSize() + 'px'"
       ></div>
 
+      <!-- Play/Pause button -->
+      <button
+        class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center
+               bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+               hover:bg-white/90 transition-all duration-200"
+        (click)="simulation.toggle()"
+        [attr.aria-label]="simulation.running() ? 'Pause simulation' : 'Start simulation'"
+      >
+        <span class="text-slate-600 text-sm font-bold select-none">
+          {{ simulation.running() ? '\u23F8' : '\u25B6' }}
+        </span>
+      </button>
+
       <!-- Connection layer (SVG) -->
       <app-connection-layer
         [connections]="gameState.connections()"
@@ -39,6 +54,7 @@ interface HoverPosition {
         [boardWidth]="boardWidth()"
         [boardHeight]="boardHeight()"
         [selectedConnectionId]="gameState.selectedConnectionId()"
+        [packets]="renderedPackets()"
         [dragPreviewSource]="connectionDragSource()"
         [dragPreviewCursor]="connectionDragCursor()"
         (connectionClick)="onConnectionClick($event)"
@@ -91,6 +107,7 @@ interface HoverPosition {
 export class GameBoardComponent {
     // ── Injected Services ──────────────────────────────────────────────
     protected readonly gameState = inject(GameStateService);
+    protected readonly simulation = inject(SimulationService);
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);
@@ -152,6 +169,38 @@ export class GameBoardComponent {
         const type = this.gameState.draggingType();
         if (!type) return 0;
         return getServiceConfig(type).gridHeight * this.cellSize();
+    });
+
+    // ── Packet rendering ──────────────────────────────────────────────
+    protected readonly renderedPackets = computed(() => {
+        const packets = this.simulation.packets();
+        if (packets.length === 0) return [];
+
+        const services = this.gameState.services();
+        const connections = this.gameState.connections();
+        const cellSize = this.cellSize();
+
+        // Build a lookup of connection → bezier curve
+        const curveCache = new Map<string, ReturnType<typeof getConnectionBezier>>();
+        for (const conn of connections) {
+            const src = services.find((s) => s.id === conn.source.serviceId);
+            const tgt = services.find((s) => s.id === conn.target.serviceId);
+            if (src && tgt) {
+                curveCache.set(
+                    conn.id,
+                    getConnectionBezier(src, conn.source.portIndex, tgt, conn.target.portIndex, cellSize),
+                );
+            }
+        }
+
+        return packets
+            .map((p) => {
+                const curve = curveCache.get(p.connectionId);
+                if (!curve) return null;
+                const pos = evaluateBezier(p.progress, curve);
+                return { x: pos.x, y: pos.y, color: p.color };
+            })
+            .filter((p) => p !== null);
     });
 
     // ── Keyboard handlers ─────────────────────────────────────────────
