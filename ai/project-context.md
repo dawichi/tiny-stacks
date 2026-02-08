@@ -23,6 +23,8 @@
 - [x] Drag-drop placement with green/red preview
 - [x] SVG connection lines between service ports (Bezier curves)
 - [x] Port-to-port drag interaction (mousedown→mousemove→mouseup)
+- [x] Service inspector panel (right-side, glassmorphism)
+- [x] Connection selection + Delete key deletion
 
 ---
 
@@ -123,14 +125,12 @@ canConnect(source, target) // validates port directions, duplicates, self-connec
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Service inspector panel
-2. Connection deletion (click connection → delete key)
+1. Animated request packets (CSS animations on SVG paths)
+2. Save/Load with LocalStorage
 
 ### Future
-- Animated request packets (CSS animations on SVG paths)
 - Cascading failure visualization
 - Challenge mode
-- Save/Load with LocalStorage
 
 ---
 

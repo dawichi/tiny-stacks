@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
@@ -38,8 +38,10 @@ interface HoverPosition {
         [cellSize]="cellSize()"
         [boardWidth]="boardWidth()"
         [boardHeight]="boardHeight()"
+        [selectedConnectionId]="gameState.selectedConnectionId()"
         [dragPreviewSource]="connectionDragSource()"
         [dragPreviewCursor]="connectionDragCursor()"
+        (connectionClick)="onConnectionClick($event)"
       />
 
       <!-- Placement preview overlay -->
@@ -152,9 +154,25 @@ export class GameBoardComponent {
         return getServiceConfig(type).gridHeight * this.cellSize();
     });
 
+    // ── Keyboard handlers ─────────────────────────────────────────────
+    @HostListener('window:keydown', ['$event'])
+    protected onKeyDown(event: KeyboardEvent): void {
+        const selectedConn = this.gameState.selectedConnectionId();
+        if ((event.key === 'Delete' || event.key === 'Backspace') && selectedConn) {
+            event.preventDefault();
+            this.gameState.removeConnection(selectedConn);
+        }
+    }
+
     // ── Service interaction methods ────────────────────────────────────
     protected onServiceClick(id: string): void {
+        this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(id);
+    }
+
+    protected onConnectionClick(connectionId: string): void {
+        this.gameState.selectService(null);
+        this.gameState.selectedConnectionId.set(connectionId);
     }
 
     // ── Palette drag-drop methods ──────────────────────────────────────

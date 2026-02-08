@@ -60,6 +60,9 @@ export class GameStateService {
     // Selected service for inspector
     readonly selectedServiceId = signal<string | null>(null);
 
+    // Selected connection for deletion
+    readonly selectedConnectionId = signal<string | null>(null);
+
     // Currently dragged service type (for placement preview)
     readonly draggingType = signal<ServiceType | null>(null);
 
@@ -162,6 +165,9 @@ export class GameStateService {
      */
     removeConnection(id: string): void {
         this.connections.update((conns) => conns.filter((c) => c.id !== id));
+        if (this.selectedConnectionId() === id) {
+            this.selectedConnectionId.set(null);
+        }
     }
 
     /**
@@ -213,6 +219,7 @@ export class GameStateService {
         this.services.set([]);
         this.connections.set([]);
         this.selectedServiceId.set(null);
+        this.selectedConnectionId.set(null);
     }
 
     /**

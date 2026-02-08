@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import type { Connection, PlacedService, PortRef } from '../../core/game/game-state.service';
 import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '../../core/game/port-utils';
 
@@ -16,11 +16,13 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
       @for (conn of renderedConnections(); track conn.id) {
         <path
           [attr.d]="conn.path"
-          class="pointer-events-auto cursor-pointer"
+          class="connection-path pointer-events-auto cursor-pointer"
+          [class.selected]="conn.id === selectedConnectionId()"
           fill="none"
-          stroke="#94a3b8"
-          stroke-width="3"
+          [attr.stroke]="conn.id === selectedConnectionId() ? '#3b82f6' : '#94a3b8'"
+          [attr.stroke-width]="conn.id === selectedConnectionId() ? 4 : 3"
           stroke-linecap="round"
+          (click)="onConnectionClick($event, conn.id)"
         />
       }
 
@@ -40,12 +42,15 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
   `,
     styles: [
         `
-    path.pointer-events-auto {
+    .connection-path {
       transition: stroke 150ms ease, stroke-width 150ms ease;
     }
-    path.pointer-events-auto:hover {
+    .connection-path:hover {
       stroke: #64748b;
       stroke-width: 4;
+    }
+    .connection-path.selected {
+      filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
     }
   `,
     ],
@@ -57,8 +62,12 @@ export class ConnectionLayerComponent {
     readonly cellSize = input.required<number>();
     readonly boardWidth = input.required<number>();
     readonly boardHeight = input.required<number>();
+    readonly selectedConnectionId = input<string | null>(null);
     readonly dragPreviewSource = input<PortRef | null>(null);
     readonly dragPreviewCursor = input<{ x: number; y: number } | null>(null);
+
+    // ── Outputs ────────────────────────────────────────────────────────
+    readonly connectionClick = output<string>();
 
     // ── Computed ──────────────────────────────────────────────────────
     protected readonly renderedConnections = computed(() => {
@@ -92,4 +101,10 @@ export class ConnectionLayerComponent {
         const from = getPortAbsolutePosition(srcService, source.portIndex, this.cellSize());
         return computePreviewPath(from, cursor.x, cursor.y);
     });
+
+    // ── Methods ────────────────────────────────────────────────────────
+    protected onConnectionClick(event: MouseEvent, connectionId: string): void {
+        event.stopPropagation();
+        this.connectionClick.emit(connectionId);
+    }
 }
