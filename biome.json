@@ -5,12 +5,23 @@
         "clientKind": "git",
         "useIgnoreFile": true
     },
-    "assist": { "actions": { "source": { "organizeImports": "on" } } },
+    "assist": {
+        "actions": {
+            "source": { "organizeImports": "on" }
+        }
+    },
     "formatter": {
         "enabled": true,
         "indentStyle": "space",
         "indentWidth": 4,
         "lineWidth": 120
+    },
+    "javascript": {
+        "formatter": {
+            "quoteStyle": "single",
+            "trailingCommas": "all",
+            "semicolons": "always"
+        }
     },
     "linter": {
         "enabled": true,
@@ -18,13 +29,20 @@
             "recommended": true,
             "style": {
                 "useImportType": "off",
-                "noNonNullAssertion": "off"
+                "noNonNullAssertion": "warn",
+                "useConst": "error",
+                "useTemplate": "warn"
             },
             "complexity": {
                 "useLiteralKeys": "off"
             },
             "suspicious": {
-                "noExplicitAny": "warn"
+                "noExplicitAny": "warn",
+                "noConsole": "warn"
+            },
+            "correctness": {
+                "noUnusedVariables": "warn",
+                "noUnusedImports": "warn"
             }
         }
     },

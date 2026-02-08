@@ -1,9 +1,9 @@
-import { Component, inject, OnInit } from "@angular/core";
-import { GameStateService } from "./core/game/game-state.service";
-import { GameBoardComponent } from "./features/board/game-board.component";
+import { Component, inject, OnInit } from '@angular/core';
+import { GameStateService } from './core/game/game-state.service';
+import { GameBoardComponent } from './features/board/game-board.component';
 
 @Component({
-    selector: "app-root",
+    selector: 'app-root',
     standalone: true,
     imports: [GameBoardComponent],
     template: `

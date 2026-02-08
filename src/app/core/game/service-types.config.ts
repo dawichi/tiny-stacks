@@ -2,21 +2,21 @@
  * Service type identifiers
  */
 export enum ServiceType {
-    API_GATEWAY = "api_gateway",
-    REST_SERVICE = "rest_service",
-    DATABASE = "database",
-    CACHE = "cache",
-    MESSAGE_QUEUE = "message_queue",
-    LOAD_BALANCER = "load_balancer",
+    API_GATEWAY = 'api_gateway',
+    REST_SERVICE = 'rest_service',
+    DATABASE = 'database',
+    CACHE = 'cache',
+    MESSAGE_QUEUE = 'message_queue',
+    LOAD_BALANCER = 'load_balancer',
 }
 
 /**
  * Port direction for connections
  */
 export enum PortDirection {
-    INPUT = "input",
-    OUTPUT = "output",
-    BIDIRECTIONAL = "bidirectional",
+    INPUT = 'input',
+    OUTPUT = 'output',
+    BIDIRECTIONAL = 'bidirectional',
 }
 
 /**
@@ -27,7 +27,7 @@ export interface PortConfig {
     cellOffsetX: number;
     cellOffsetY: number;
     /** Which edge of the cell the port is on */
-    edge: "north" | "south" | "east" | "west";
+    edge: 'north' | 'south' | 'east' | 'west';
     /** Port direction */
     direction: PortDirection;
 }
@@ -60,15 +60,15 @@ export interface ServiceTypeConfig {
 export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
     [ServiceType.API_GATEWAY]: {
         type: ServiceType.API_GATEWAY,
-        name: "API Gateway",
-        description: "Entry point for all requests. Routes traffic to appropriate services.",
+        name: 'API Gateway',
+        description: 'Entry point for all requests. Routes traffic to appropriate services.',
         gridWidth: 3,
         gridHeight: 2,
-        color: "#88D8D8", // Soft Teal
-        icon: "globe",
+        color: '#88D8D8', // Soft Teal
+        icon: 'globe',
         ports: [
-            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 2, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.INPUT },
+            { cellOffsetX: 2, cellOffsetY: 1, edge: 'east', direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 10,
         maxConcurrency: 100,
@@ -77,15 +77,15 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
 
     [ServiceType.REST_SERVICE]: {
         type: ServiceType.REST_SERVICE,
-        name: "REST Service",
-        description: "Processes business logic. Handles API requests.",
+        name: 'REST Service',
+        description: 'Processes business logic. Handles API requests.',
         gridWidth: 2,
         gridHeight: 2,
-        color: "#87CEEB", // Sky Blue
-        icon: "server",
+        color: '#87CEEB', // Sky Blue
+        icon: 'server',
         ports: [
-            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 1, edge: 'east', direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 50,
         maxConcurrency: 20,
@@ -94,13 +94,13 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
 
     [ServiceType.DATABASE]: {
         type: ServiceType.DATABASE,
-        name: "Database",
-        description: "Persistent data storage. Slower but reliable.",
+        name: 'Database',
+        description: 'Persistent data storage. Slower but reliable.',
         gridWidth: 3,
         gridHeight: 3,
-        color: "#D4A5FF", // Lavender
-        icon: "database",
-        ports: [{ cellOffsetX: 1, cellOffsetY: 0, edge: "north", direction: PortDirection.BIDIRECTIONAL }],
+        color: '#D4A5FF', // Lavender
+        icon: 'database',
+        ports: [{ cellOffsetX: 1, cellOffsetY: 0, edge: 'north', direction: PortDirection.BIDIRECTIONAL }],
         baseProcessingTime: 100,
         maxConcurrency: 10,
         queueSize: 50,
@@ -108,13 +108,13 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
 
     [ServiceType.CACHE]: {
         type: ServiceType.CACHE,
-        name: "Cache",
-        description: "Fast in-memory storage. Limited capacity.",
+        name: 'Cache',
+        description: 'Fast in-memory storage. Limited capacity.',
         gridWidth: 2,
         gridHeight: 1,
-        color: "#A8E6CF", // Mint
-        icon: "zap",
-        ports: [{ cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.BIDIRECTIONAL }],
+        color: '#A8E6CF', // Mint
+        icon: 'zap',
+        ports: [{ cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.BIDIRECTIONAL }],
         baseProcessingTime: 5,
         maxConcurrency: 50,
         queueSize: 200,
@@ -122,15 +122,15 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
 
     [ServiceType.MESSAGE_QUEUE]: {
         type: ServiceType.MESSAGE_QUEUE,
-        name: "Message Queue",
-        description: "Async processing buffer. Handles bursts of traffic.",
+        name: 'Message Queue',
+        description: 'Async processing buffer. Handles bursts of traffic.',
         gridWidth: 2,
         gridHeight: 3,
-        color: "#FFCBA4", // Peach
-        icon: "mail",
+        color: '#FFCBA4', // Peach
+        icon: 'mail',
         ports: [
-            { cellOffsetX: 0, cellOffsetY: 0, edge: "north", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetY: 2, edge: "south", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: 'north', direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 2, edge: 'south', direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 20,
         maxConcurrency: 1,
@@ -139,16 +139,16 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
 
     [ServiceType.LOAD_BALANCER]: {
         type: ServiceType.LOAD_BALANCER,
-        name: "Load Balancer",
-        description: "Distributes requests across multiple services.",
+        name: 'Load Balancer',
+        description: 'Distributes requests across multiple services.',
         gridWidth: 2,
         gridHeight: 2,
-        color: "#FFE5A0", // Soft Gold
-        icon: "split",
+        color: '#FFE5A0', // Soft Gold
+        icon: 'split',
         ports: [
-            { cellOffsetX: 0, cellOffsetY: 0, edge: "west", direction: PortDirection.INPUT },
-            { cellOffsetX: 1, cellOffsetY: 0, edge: "east", direction: PortDirection.OUTPUT },
-            { cellOffsetX: 1, cellOffsetY: 1, edge: "east", direction: PortDirection.OUTPUT },
+            { cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 0, edge: 'east', direction: PortDirection.OUTPUT },
+            { cellOffsetX: 1, cellOffsetY: 1, edge: 'east', direction: PortDirection.OUTPUT },
         ],
         baseProcessingTime: 2,
         maxConcurrency: 200,

@@ -1,10 +1,10 @@
-import { Component, computed, input } from "@angular/core";
-import { Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from "lucide-angular";
-import { PlacedService } from "../../core/game/game-state.service";
-import { getServiceConfig } from "../../core/game/service-types.config";
+import { Component, computed, input } from '@angular/core';
+import { Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
+import { PlacedService } from '../../core/game/game-state.service';
+import { getServiceConfig } from '../../core/game/service-types.config';
 
 @Component({
-    selector: "app-service",
+    selector: 'app-service',
     standalone: true,
     imports: [LucideAngularModule],
     template: `
@@ -89,14 +89,14 @@ export class ServiceComponent {
 
     protected portColor(direction: string): string {
         switch (direction) {
-            case "input":
-                return "#22c55e"; // green-500
-            case "output":
-                return "#3b82f6"; // blue-500
-            case "bidirectional":
-                return "#f97316"; // orange-500
+            case 'input':
+                return '#22c55e'; // green-500
+            case 'output':
+                return '#3b82f6'; // blue-500
+            case 'bidirectional':
+                return '#f97316'; // orange-500
             default:
-                return "#9ca3af"; // gray-400
+                return '#9ca3af'; // gray-400
         }
     }
 
@@ -105,9 +105,9 @@ export class ServiceComponent {
         const baseX = port.cellOffsetX * cellSize;
 
         switch (port.edge) {
-            case "west":
+            case 'west':
                 return -6; // Half of port width, positioned at left edge
-            case "east":
+            case 'east':
                 return this.width() - 6;
             default:
                 return baseX + cellSize / 2 - 6;
@@ -119,9 +119,9 @@ export class ServiceComponent {
         const baseY = port.cellOffsetY * cellSize;
 
         switch (port.edge) {
-            case "north":
+            case 'north':
                 return -6;
-            case "south":
+            case 'south':
                 return this.height() - 6;
             default:
                 return baseY + cellSize / 2 - 6;

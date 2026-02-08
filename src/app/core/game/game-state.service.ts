@@ -1,5 +1,5 @@
-import { computed, Injectable, signal } from "@angular/core";
-import { getServiceConfig, ServiceType } from "./service-types.config";
+import { computed, Injectable, signal } from '@angular/core';
+import { getServiceConfig, ServiceType } from './service-types.config';
 
 /**
  * Represents a placed service on the grid
@@ -24,7 +24,7 @@ export interface GridConfig {
  * Game state management using Angular Signals
  */
 @Injectable({
-    providedIn: "root",
+    providedIn: 'root',
 })
 export class GameStateService {
     // Grid configuration

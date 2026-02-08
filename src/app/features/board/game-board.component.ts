@@ -1,9 +1,9 @@
-import { Component, computed, inject } from "@angular/core";
-import { GameStateService } from "../../core/game/game-state.service";
-import { ServiceComponent } from "../services/service.component";
+import { Component, computed, inject } from '@angular/core';
+import { GameStateService } from '../../core/game/game-state.service';
+import { ServiceComponent } from '../services/service.component';
 
 @Component({
-    selector: "app-game-board",
+    selector: 'app-game-board',
     standalone: true,
     imports: [ServiceComponent],
     template: `
@@ -61,7 +61,7 @@ export class GameBoardComponent {
 
     protected readonly gridPattern = computed(() => {
         // Create subtle grid lines using CSS gradient
-        const lineColor = "rgba(148, 163, 184, 0.3)"; // slate-400 with opacity
+        const lineColor = 'rgba(148, 163, 184, 0.3)'; // slate-400 with opacity
         return `
       linear-gradient(to right, ${lineColor} 1px, transparent 1px),
       linear-gradient(to bottom, ${lineColor} 1px, transparent 1px)
