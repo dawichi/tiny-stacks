@@ -6,8 +6,8 @@
 
 ## Project Status
 
-**Phase:** Initial Scaffolding
-**Milestone:** Hello World Scene
+**Phase:** Core Systems
+**Milestone:** Grid System Complete
 **Last Updated:** 2026-02-08
 
 ### Current Progress
@@ -15,9 +15,13 @@
 - [x] TailwindCSS v4.1.18 configured
 - [x] Three.js 0.182.0 installed
 - [x] Lucide Angular icons installed
-- [ ] GameEngineService created
-- [ ] GameCanvasComponent created
-- [ ] Hello World scene rendering
+- [x] GameEngineService created
+- [x] GameCanvasComponent created
+- [x] Hello World scene (spinning cube)
+- [x] Isometric orthographic camera
+- [x] Soft lighting with shadows (PCFSoftShadowMap)
+- [x] Ground plane with grid overlay
+- [x] GridHelper with cell highlighting
 
 ---
 
@@ -46,7 +50,9 @@ src/
 ├── app/
 │   ├── core/
 │   │   └── engine/
-│   │       └── game-engine.service.ts  # Three.js scene management
+│   │       ├── game-engine.service.ts  # Three.js scene management
+│   │       └── helpers/
+│   │           └── grid.helper.ts       # Grid system with highlighting
 │   ├── features/
 │   │   └── canvas/
 │   │       └── game-canvas.component.ts
@@ -69,27 +75,36 @@ ngZone.runOutsideAngular(() => {
 });
 ```
 
+### Grid System
+```typescript
+// GridHelper provides:
+// - Subtle grid lines (opacity 0.15, slate gray)
+// - Cell highlighting (green=valid, red=invalid)
+// - Multi-cell highlighting for larger services
+// - World <-> Grid coordinate conversion
+// - Screen <-> Grid raycasting
+
+gridHelper.highlightCell(5, 5, true);      // Single cell
+gridHelper.highlightCells([...], false);   // Multi-cell
+gridHelper.setLineOpacity(0.4);            // Emphasize on drag
+```
+
 ---
 
 ## Todo List
 
-### Immediate (Current Session)
-1. Create `GameEngineService` with Three.js basics
-2. Create `GameCanvasComponent`
-3. Render Hello World: spinning pastel cube with rounded edges
-
-### Next Up
-4. Implement isometric orthographic camera
-5. Add soft lighting with shadows (PCFSoftShadowMap)
-6. Create ground plane
-7. Apply clay-like MeshPhysicalMaterial
+### Immediate (Next Steps)
+1. Camera controls (pan + zoom)
+2. First service mesh (API Gateway as multi-cell example)
+3. Service palette UI (floating panel)
+4. Drag-drop placement with grid snapping
 
 ### Future
-- Grid system
-- Service palette UI
-- Drag-drop placement
 - Port-based connections
+- Connection tubes (rounded 3D)
 - Request packet animation
+- Cascading failure system
+- Challenge mode
 
 ---
 
@@ -107,17 +122,25 @@ new THREE.MeshPhysicalMaterial({
 ```
 
 ### Lighting
-- Directional light: intensity ~1.0, casting soft shadows
-- Ambient light: intensity ~0.4
-- Shadow map: PCFSoftShadowMap
+- Directional light: intensity 1.2, casting soft shadows
+- Ambient light: intensity 0.5
+- Fill light: intensity 0.3 (opposite direction)
+- Shadow map: PCFSoftShadowMap, 2048x2048
 
 ### Camera (Isometric)
 ```typescript
 // Orthographic camera at isometric angle
-// Rotation: 45° Y, 35.264° X (atan(1/√2))
-camera.position.set(10, 10, 10);
+camera.position.set(15, 15, 15);
 camera.lookAt(0, 0, 0);
 ```
+
+### Grid
+- Default size: 20x20 cells
+- Cell size: 1 unit
+- Line color: Slate (#708090)
+- Line opacity: 0.15 (subtle), 0.4 (emphasized)
+- Highlight valid: Mint (#A8E6CF)
+- Highlight invalid: Coral (#FF8B8B)
 
 ### Color Palette (CSS Variables)
 | Name | Hex | Use |

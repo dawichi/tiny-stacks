@@ -1,5 +1,6 @@
 import { Injectable, NgZone, signal } from '@angular/core';
 import * as THREE from 'three';
+import { GridHelper, GridConfig } from './helpers/grid.helper';
 
 @Injectable({
   providedIn: 'root'
@@ -9,9 +10,17 @@ export class GameEngineService {
   private camera!: THREE.OrthographicCamera;
   private renderer!: THREE.WebGLRenderer;
   private animationFrameId: number | null = null;
+  private gridHelper!: GridHelper;
 
   // Expose scene for components that need to add objects
   readonly isInitialized = signal(false);
+
+  // Grid configuration (can be overridden for challenges)
+  private gridConfig: Partial<GridConfig> = {
+    width: 20,
+    height: 20,
+    cellSize: 1,
+  };
 
   constructor(private ngZone: NgZone) {}
 
@@ -42,6 +51,7 @@ export class GameEngineService {
       this.animationFrameId = null;
     }
 
+    this.gridHelper?.dispose();
     this.renderer?.dispose();
     this.scene?.clear();
     this.isInitialized.set(false);
@@ -143,8 +153,10 @@ export class GameEngineService {
   }
 
   private createHelloWorldScene(): void {
-    // Ground plane
-    const groundGeometry = new THREE.PlaneGeometry(20, 20);
+    // Ground plane (slightly below grid to avoid z-fighting)
+    const { width, height, cellSize } = this.gridConfig;
+    const groundSize = Math.max(width!, height!) * cellSize! + 2;
+    const groundGeometry = new THREE.PlaneGeometry(groundSize, groundSize);
     const groundMaterial = new THREE.MeshStandardMaterial({
       color: 0xE8E4E0, // Slightly warm off-white
       roughness: 0.9,
@@ -152,13 +164,15 @@ export class GameEngineService {
     });
     const ground = new THREE.Mesh(groundGeometry, groundMaterial);
     ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -0.5;
+    ground.position.y = 0;
     ground.receiveShadow = true;
+    ground.name = 'ground';
     this.scene.add(ground);
 
-    // Rounded cube (using RoundedBoxGeometry approach with bevel)
-    // Since Three.js doesn't have built-in rounded box, we'll use BoxGeometry
-    // with a custom approach - for now, standard box with beveled edges effect
+    // Create the grid overlay
+    this.gridHelper = new GridHelper(this.scene, this.gridConfig);
+
+    // Demo cube - Rounded box with clay material
     const cubeGeometry = new THREE.BoxGeometry(2, 2, 2, 4, 4, 4);
     this.applyRoundedEdges(cubeGeometry, 0.15);
 
@@ -172,11 +186,71 @@ export class GameEngineService {
     });
 
     const cube = new THREE.Mesh(cubeGeometry, cubeMaterial);
-    cube.position.y = 0.5;
+    cube.position.y = 1; // Sit on top of ground
     cube.castShadow = true;
     cube.receiveShadow = true;
     cube.name = 'helloWorldCube';
     this.scene.add(cube);
+  }
+
+  // ============ Grid API ============
+
+  /**
+   * Get the grid helper for external manipulation
+   */
+  getGrid(): GridHelper {
+    return this.gridHelper;
+  }
+
+  /**
+   * Highlight a grid cell (used during drag operations)
+   */
+  highlightGridCell(gridX: number, gridZ: number, isValid: boolean): void {
+    this.gridHelper.highlightCell(gridX, gridZ, isValid);
+  }
+
+  /**
+   * Highlight multiple grid cells (for multi-cell services)
+   */
+  highlightGridCells(cells: Array<{ gridX: number; gridZ: number }>, isValid: boolean): void {
+    this.gridHelper.highlightCells(cells, isValid);
+  }
+
+  /**
+   * Clear grid highlight
+   */
+  clearGridHighlight(): void {
+    this.gridHelper.clearHighlight();
+  }
+
+  /**
+   * Set grid line emphasis (0.15 = subtle, 0.4 = emphasized during drag)
+   */
+  setGridEmphasis(emphasized: boolean): void {
+    this.gridHelper.setLineOpacity(emphasized ? 0.4 : 0.15);
+  }
+
+  /**
+   * Convert screen coordinates to grid coordinates
+   */
+  screenToGrid(screenX: number, screenY: number, containerWidth: number, containerHeight: number): { gridX: number; gridZ: number } | null {
+    // Normalize screen coords to NDC (-1 to 1)
+    const ndcX = (screenX / containerWidth) * 2 - 1;
+    const ndcY = -(screenY / containerHeight) * 2 + 1;
+
+    // Create raycaster
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+    // Find intersection with ground plane
+    const ground = this.scene.getObjectByName('ground');
+    if (!ground) return null;
+
+    const intersects = raycaster.intersectObject(ground);
+    if (intersects.length === 0) return null;
+
+    const point = intersects[0].point;
+    return this.gridHelper.worldToGrid(point.x, point.z);
   }
 
   /**
