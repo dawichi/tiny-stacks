@@ -1,6 +1,7 @@
 import { Injectable, NgZone, signal } from '@angular/core';
 import * as THREE from 'three';
 import { GridHelper, GridConfig } from './helpers/grid.helper';
+import { CameraControls } from './helpers/camera-controls.helper';
 
 @Injectable({
   providedIn: 'root'
@@ -11,6 +12,7 @@ export class GameEngineService {
   private renderer!: THREE.WebGLRenderer;
   private animationFrameId: number | null = null;
   private gridHelper!: GridHelper;
+  private cameraControls!: CameraControls;
 
   // Expose scene for components that need to add objects
   readonly isInitialized = signal(false);
@@ -34,6 +36,9 @@ export class GameEngineService {
     this.createLights();
     this.createHelloWorldScene();
 
+    // Initialize camera controls (pan + zoom)
+    this.cameraControls = new CameraControls(this.camera, this.renderer.domElement);
+
     // Start render loop OUTSIDE Angular Zone for 60 FPS
     this.ngZone.runOutsideAngular(() => {
       this.animate();
@@ -51,6 +56,7 @@ export class GameEngineService {
       this.animationFrameId = null;
     }
 
+    this.cameraControls?.dispose();
     this.gridHelper?.dispose();
     this.renderer?.dispose();
     this.scene?.clear();
@@ -63,16 +69,8 @@ export class GameEngineService {
   onResize(width: number, height: number): void {
     if (!this.camera || !this.renderer) return;
 
-    const aspect = width / height;
-    const frustumSize = 10;
-
-    this.camera.left = -frustumSize * aspect / 2;
-    this.camera.right = frustumSize * aspect / 2;
-    this.camera.top = frustumSize / 2;
-    this.camera.bottom = -frustumSize / 2;
-    this.camera.updateProjectionMatrix();
-
     this.renderer.setSize(width, height);
+    this.cameraControls?.onResize();
   }
 
   private createScene(): void {
@@ -231,6 +229,13 @@ export class GameEngineService {
   }
 
   /**
+   * Reset camera to center position
+   */
+  resetCamera(): void {
+    this.cameraControls?.reset();
+  }
+
+  /**
    * Convert screen coordinates to grid coordinates
    */
   screenToGrid(screenX: number, screenY: number, containerWidth: number, containerHeight: number): { gridX: number; gridZ: number } | null {
@@ -286,6 +291,9 @@ export class GameEngineService {
 
   private animate = (): void => {
     this.animationFrameId = requestAnimationFrame(this.animate);
+
+    // Update camera controls (for keyboard pan)
+    this.cameraControls?.update();
 
     // Rotate the cube for "Hello World" demo
     const cube = this.scene.getObjectByName('helloWorldCube');
