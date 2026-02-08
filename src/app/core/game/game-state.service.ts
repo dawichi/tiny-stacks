@@ -1,5 +1,5 @@
 import { computed, Injectable, signal } from '@angular/core';
-import { getServiceConfig, ServiceType } from './service-types.config';
+import { getServiceConfig, PortDirection, ServiceType } from './service-types.config';
 
 /**
  * Represents a placed service on the grid
@@ -21,6 +21,23 @@ export interface GridConfig {
 }
 
 /**
+ * Reference to a specific port on a specific service
+ */
+export interface PortRef {
+    serviceId: string;
+    portIndex: number;
+}
+
+/**
+ * A connection between two service ports
+ */
+export interface Connection {
+    id: string;
+    source: PortRef;
+    target: PortRef;
+}
+
+/**
  * Game state management using Angular Signals
  */
 @Injectable({
@@ -36,6 +53,9 @@ export class GameStateService {
 
     // Placed services
     readonly services = signal<PlacedService[]>([]);
+
+    // Connections between service ports
+    readonly connections = signal<Connection[]>([]);
 
     // Selected service for inspector
     readonly selectedServiceId = signal<string | null>(null);
@@ -84,10 +104,11 @@ export class GameStateService {
     }
 
     /**
-     * Remove a service from the grid
+     * Remove a service from the grid (also removes its connections)
      */
     removeService(id: string): void {
         this.services.update((services) => services.filter((s) => s.id !== id));
+        this.connections.update((conns) => conns.filter((c) => c.source.serviceId !== id && c.target.serviceId !== id));
         if (this.selectedServiceId() === id) {
             this.selectedServiceId.set(null);
         }
@@ -119,6 +140,66 @@ export class GameStateService {
     }
 
     /**
+     * Add a connection between two ports
+     */
+    addConnection(source: PortRef, target: PortRef): Connection | null {
+        if (!this.canConnect(source, target)) {
+            return null;
+        }
+
+        const connection: Connection = {
+            id: `conn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
+            source,
+            target,
+        };
+
+        this.connections.update((conns) => [...conns, connection]);
+        return connection;
+    }
+
+    /**
+     * Remove a connection
+     */
+    removeConnection(id: string): void {
+        this.connections.update((conns) => conns.filter((c) => c.id !== id));
+    }
+
+    /**
+     * Check if a connection between two ports is valid
+     */
+    canConnect(source: PortRef, target: PortRef): boolean {
+        // No self-connections
+        if (source.serviceId === target.serviceId) return false;
+
+        const srcService = this.services().find((s) => s.id === source.serviceId);
+        const tgtService = this.services().find((s) => s.id === target.serviceId);
+        if (!srcService || !tgtService) return false;
+
+        const srcConfig = getServiceConfig(srcService.type);
+        const tgtConfig = getServiceConfig(tgtService.type);
+        const srcPort = srcConfig.ports[source.portIndex];
+        const tgtPort = tgtConfig.ports[target.portIndex];
+        if (!srcPort || !tgtPort) return false;
+
+        // Source must be OUTPUT or BIDIRECTIONAL
+        if (srcPort.direction === PortDirection.INPUT) return false;
+        // Target must be INPUT or BIDIRECTIONAL
+        if (tgtPort.direction === PortDirection.OUTPUT) return false;
+
+        // No duplicate connections
+        const exists = this.connections().some(
+            (c) =>
+                c.source.serviceId === source.serviceId &&
+                c.source.portIndex === source.portIndex &&
+                c.target.serviceId === target.serviceId &&
+                c.target.portIndex === target.portIndex,
+        );
+        if (exists) return false;
+
+        return true;
+    }
+
+    /**
      * Select a service
      */
     selectService(id: string | null): void {
@@ -126,10 +207,11 @@ export class GameStateService {
     }
 
     /**
-     * Clear all services
+     * Clear all services and connections
      */
     clearAll(): void {
         this.services.set([]);
+        this.connections.set([]);
         this.selectedServiceId.set(null);
     }
 

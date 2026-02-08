@@ -1,4 +1,4 @@
-import { Component, computed, input } from '@angular/core';
+import { Component, computed, input, output } from '@angular/core';
 import { Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
 import { PlacedService } from '../../core/game/game-state.service';
 import { getServiceConfig } from '../../core/game/service-types.config';
@@ -35,13 +35,16 @@ import { getServiceConfig } from '../../core/game/service-types.config';
         {{ config().name }}
       </span>
 
-      <!-- Ports indicator dots -->
+      <!-- Port dots -->
       @for (port of config().ports; track $index) {
         <div
-          class="absolute w-3 h-3 rounded-full border-2 border-white shadow-sm"
+          class="port-dot absolute w-3 h-3 rounded-full border-2 border-white shadow-sm cursor-crosshair"
+          [class.port-highlight]="connectionDragActive()"
           [style.background-color]="portColor(port.direction)"
           [style.left.px]="portX(port)"
           [style.top.px]="portY(port)"
+          (mousedown)="onPortMouseDown($event, $index)"
+          (mouseup)="onPortMouseUp($event, $index)"
         ></div>
       }
     </div>
@@ -54,15 +57,32 @@ import { getServiceConfig } from '../../core/game/service-types.config';
         0 2px 4px -2px rgba(0, 0, 0, 0.1),
         inset 0 1px 0 rgba(255, 255, 255, 0.2);
     }
+
+    .port-dot {
+      transition: transform 150ms ease, box-shadow 150ms ease;
+      z-index: 1;
+    }
+
+    .port-highlight {
+      transform: scale(1.5);
+      box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
+      z-index: 10;
+    }
   `,
     ],
 })
 export class ServiceComponent {
+    // ── Inputs ─────────────────────────────────────────────────────────
     readonly service = input.required<PlacedService>();
     readonly cellSize = input.required<number>();
     readonly isSelected = input<boolean>(false);
+    readonly connectionDragActive = input<boolean>(false);
 
-    // Icon mapping
+    // ── Outputs ────────────────────────────────────────────────────────
+    readonly portDragStart = output<{ serviceId: string; portIndex: number }>();
+    readonly portDragEnd = output<{ serviceId: string; portIndex: number }>();
+
+    // ── Properties ─────────────────────────────────────────────────────
     private readonly icons = {
         globe: Globe,
         server: Server,
@@ -87,6 +107,7 @@ export class ServiceComponent {
         return this.icons[iconName] || Globe;
     });
 
+    // ── Methods ────────────────────────────────────────────────────────
     protected portColor(direction: string): string {
         switch (direction) {
             case 'input':
@@ -126,5 +147,16 @@ export class ServiceComponent {
             default:
                 return baseY + cellSize / 2 - 6;
         }
+    }
+
+    protected onPortMouseDown(event: MouseEvent, portIndex: number): void {
+        event.stopPropagation();
+        event.preventDefault();
+        this.portDragStart.emit({ serviceId: this.service().id, portIndex });
+    }
+
+    protected onPortMouseUp(event: MouseEvent, portIndex: number): void {
+        event.stopPropagation();
+        this.portDragEnd.emit({ serviceId: this.service().id, portIndex });
     }
 }

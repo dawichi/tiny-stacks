@@ -6,8 +6,8 @@
 
 ## Project Status
 
-**Phase:** 2D Refactor Complete
-**Milestone:** Basic 2D Grid with Services
+**Phase:** Core Interactions
+**Milestone:** Service Placement + Connections
 **Last Updated:** 2026-02-08
 
 ### Current Progress
@@ -19,7 +19,10 @@
 - [x] CSS Grid game board
 - [x] 2D service components with Lucide icons
 - [x] Game state management with Signals
-- [x] Demo services rendering
+- [x] Service palette UI (drag source, glassmorphism panel)
+- [x] Drag-drop placement with green/red preview
+- [x] SVG connection lines between service ports (Bezier curves)
+- [x] Port-to-port drag interaction (mousedown→mousemove→mouseup)
 
 ---
 
@@ -38,6 +41,8 @@
 2. **CSS Grid** for game board layout
 3. **Pure Signals** - No NgRx, using Angular 21 Signals for reactive state
 4. **Lucide icons** for service visuals (SVG-based)
+5. **Native HTML5 drag-drop** for palette→board placement (no CDK)
+6. **Raw mouse events** for port-to-port connections (separate from drag API)
 
 ### Code Conventions
 
@@ -61,12 +66,17 @@ src/
 │   ├── core/
 │   │   └── game/
 │   │       ├── game-state.service.ts   # State management with Signals
-│   │       └── service-types.config.ts # Service definitions
+│   │       ├── service-types.config.ts # Service definitions
+│   │       └── port-utils.ts           # Port position math & Bezier paths
 │   ├── features/
 │   │   ├── board/
-│   │   │   └── game-board.component.ts # CSS Grid game board
+│   │   │   └── game-board.component.ts # CSS Grid board + drag-drop + connection wiring
+│   │   ├── connections/
+│   │   │   └── connection-layer.component.ts # SVG overlay for connection Bezier paths
+│   │   ├── palette/
+│   │   │   └── service-palette.component.ts  # Floating draggable service palette
 │   │   └── services/
-│   │       └── service.component.ts    # 2D service rendering
+│   │       └── service.component.ts    # 2D service rendering + port interaction
 │   └── app.ts (root component)
 ├── styles.scss (TailwindCSS + CSS variables)
 └── ai/
@@ -77,14 +87,26 @@ src/
 ```typescript
 // GameStateService uses Signals
 readonly services = signal<PlacedService[]>([]);
+readonly connections = signal<Connection[]>([]);
 readonly selectedServiceId = signal<string | null>(null);
+readonly draggingType = signal<ServiceType | null>(null);
 readonly occupiedCells = computed(() => /* collision detection */);
 
 // Methods
 addService(type, gridX, gridY)
-removeService(id)
+removeService(id)         // also removes associated connections
 canPlaceService(type, gridX, gridY)
+addConnection(source, target)
+removeConnection(id)
+canConnect(source, target) // validates port directions, duplicates, self-connections
 ```
+
+### Connection System
+- **Model:** `Connection { id, source: PortRef, target: PortRef }` where `PortRef { serviceId, portIndex }`
+- **Rendering:** SVG Bezier curves via `ConnectionLayerComponent`, layered between grid and services
+- **Interaction:** mousedown on port → mousemove shows dashed preview → mouseup on target port creates connection
+- **Validation:** OUTPUT/BIDIRECTIONAL → INPUT/BIDIRECTIONAL only, no self-connections, no duplicates
+- **Utilities:** `port-utils.ts` provides `getPortAbsolutePosition()`, `computeBezierPath()`, `computePreviewPath()`
 
 ### Service Types
 | Type | Size | Color | Icon |
@@ -101,10 +123,8 @@ canPlaceService(type, gridX, gridY)
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Service palette UI (drag source)
-2. Drag-drop placement
-3. Connection lines between services (SVG paths)
-4. Service inspector panel
+1. Service inspector panel
+2. Connection deletion (click connection → delete key)
 
 ### Future
 - Animated request packets (CSS animations on SVG paths)
@@ -122,6 +142,7 @@ canPlaceService(type, gridX, gridY)
 - Lucide icons for service types
 - Subtle grid lines
 - Soft shadows on services
+- Glassmorphism panels (palette)
 
 ### Grid
 - Default size: 20x14 cells
@@ -133,11 +154,16 @@ canPlaceService(type, gridX, gridY)
 - Output: #3b82f6 (blue-500)
 - Bidirectional: #f97316 (orange-500)
 
+### Connection Colors
+- Default: #94a3b8 (slate-400), stroke-width 3
+- Hover: #64748b (slate-500), stroke-width 4
+- Preview: #3b82f6 (blue-500), dashed, opacity 0.7
+
 ---
 
 ## Notes
 
-- **Bundle size: ~230KB** (down from 730KB with Three.js)
+- **Bundle size: ~250KB** (pure HTML/CSS/SVG, no canvas)
 - Audio: Deferred to post-MVP
 - Mobile: Desktop-only for v1
 

@@ -1,6 +1,7 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { GameStateService } from '../../core/game/game-state.service';
+import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
+import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
 
 interface HoverPosition {
@@ -11,7 +12,7 @@ interface HoverPosition {
 @Component({
     selector: 'app-game-board',
     standalone: true,
-    imports: [ServiceComponent],
+    imports: [ServiceComponent, ConnectionLayerComponent],
     template: `
     <div
       class="game-board relative bg-slate-100 rounded-lg overflow-hidden"
@@ -20,6 +21,8 @@ interface HoverPosition {
       (dragover)="onDragOver($event)"
       (dragleave)="onDragLeave($event)"
       (drop)="onDrop($event)"
+      (mousemove)="onBoardMouseMove($event)"
+      (mouseup)="onBoardMouseUp()"
     >
       <!-- Grid lines -->
       <div
@@ -27,6 +30,17 @@ interface HoverPosition {
         [style.background-image]="gridPattern()"
         [style.background-size]="cellSize() + 'px ' + cellSize() + 'px'"
       ></div>
+
+      <!-- Connection layer (SVG) -->
+      <app-connection-layer
+        [connections]="gameState.connections()"
+        [services]="gameState.services()"
+        [cellSize]="cellSize()"
+        [boardWidth]="boardWidth()"
+        [boardHeight]="boardHeight()"
+        [dragPreviewSource]="connectionDragSource()"
+        [dragPreviewCursor]="connectionDragCursor()"
+      />
 
       <!-- Placement preview overlay -->
       @if (previewVisible()) {
@@ -50,7 +64,10 @@ interface HoverPosition {
           [service]="service"
           [cellSize]="cellSize()"
           [isSelected]="gameState.selectedServiceId() === service.id"
+          [connectionDragActive]="connectionDragActive()"
           (click)="onServiceClick(service.id)"
+          (portDragStart)="onPortDragStart($event)"
+          (portDragEnd)="onPortDragEnd($event)"
         />
       }
     </div>
@@ -76,6 +93,11 @@ export class GameBoardComponent {
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);
 
+    // Connection drag state
+    protected readonly connectionDragSource = signal<PortRef | null>(null);
+    protected readonly connectionDragCursor = signal<{ x: number; y: number } | null>(null);
+    protected readonly connectionDragActive = computed(() => this.connectionDragSource() !== null);
+
     protected readonly cellSize = computed(() => this.gameState.gridConfig().cellSize);
 
     protected readonly boardWidth = computed(() => {
@@ -96,7 +118,7 @@ export class GameBoardComponent {
     `;
     });
 
-    // ── Preview computed signals ───────────────────────────────────────
+    // ── Placement preview computed signals ─────────────────────────────
     protected readonly previewVisible = computed(() => {
         return this.gameState.draggingType() !== null && this.hoverPosition() !== null;
     });
@@ -130,11 +152,12 @@ export class GameBoardComponent {
         return getServiceConfig(type).gridHeight * this.cellSize();
     });
 
-    // ── Methods ────────────────────────────────────────────────────────
+    // ── Service interaction methods ────────────────────────────────────
     protected onServiceClick(id: string): void {
         this.gameState.selectService(id);
     }
 
+    // ── Palette drag-drop methods ──────────────────────────────────────
     protected onDragOver(event: DragEvent): void {
         event.preventDefault();
         if (event.dataTransfer) {
@@ -169,6 +192,39 @@ export class GameBoardComponent {
         this.gameState.draggingType.set(null);
     }
 
+    // ── Connection drag methods ────────────────────────────────────────
+    protected onPortDragStart(event: { serviceId: string; portIndex: number }): void {
+        this.connectionDragSource.set(event);
+    }
+
+    protected onPortDragEnd(event: { serviceId: string; portIndex: number }): void {
+        const source = this.connectionDragSource();
+        if (source) {
+            this.gameState.addConnection(source, event);
+        }
+        this.connectionDragSource.set(null);
+        this.connectionDragCursor.set(null);
+    }
+
+    protected onBoardMouseMove(event: MouseEvent): void {
+        if (!this.connectionDragSource()) return;
+
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        this.connectionDragCursor.set({
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top,
+        });
+    }
+
+    protected onBoardMouseUp(): void {
+        if (this.connectionDragSource()) {
+            this.connectionDragSource.set(null);
+            this.connectionDragCursor.set(null);
+        }
+    }
+
+    // ── Private helpers ────────────────────────────────────────────────
     private eventToGrid(event: DragEvent): HoverPosition | null {
         const target = event.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
