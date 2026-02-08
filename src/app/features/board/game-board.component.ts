@@ -34,18 +34,42 @@ interface HoverPosition {
         [style.background-size]="cellSize() + 'px ' + cellSize() + 'px'"
       ></div>
 
-      <!-- Play/Pause button -->
-      <button
-        class="absolute top-3 right-3 z-10 w-8 h-8 rounded-full flex items-center justify-center
-               bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-               hover:bg-white/90 transition-all duration-200"
-        (click)="simulation.toggle()"
-        [attr.aria-label]="simulation.running() ? 'Pause simulation' : 'Start simulation'"
-      >
-        <span class="text-slate-600 text-sm font-bold select-none">
-          {{ simulation.running() ? '\u23F8' : '\u25B6' }}
-        </span>
-      </button>
+      <!-- Toolbar buttons -->
+      <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        <button
+          class="w-8 h-8 rounded-full flex items-center justify-center
+                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+                 hover:bg-white/90 transition-all duration-200
+                 disabled:opacity-30 disabled:cursor-not-allowed"
+          [disabled]="!gameState.canUndo()"
+          (click)="gameState.undo()"
+          aria-label="Undo"
+        >
+          <span class="text-slate-600 text-sm font-bold select-none">&#x21A9;</span>
+        </button>
+        <button
+          class="w-8 h-8 rounded-full flex items-center justify-center
+                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+                 hover:bg-white/90 transition-all duration-200
+                 disabled:opacity-30 disabled:cursor-not-allowed"
+          [disabled]="!gameState.canRedo()"
+          (click)="gameState.redo()"
+          aria-label="Redo"
+        >
+          <span class="text-slate-600 text-sm font-bold select-none">&#x21AA;</span>
+        </button>
+        <button
+          class="w-8 h-8 rounded-full flex items-center justify-center
+                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+                 hover:bg-white/90 transition-all duration-200"
+          (click)="simulation.toggle()"
+          [attr.aria-label]="simulation.running() ? 'Pause simulation' : 'Start simulation'"
+        >
+          <span class="text-slate-600 text-sm font-bold select-none">
+            {{ simulation.running() ? '\u23F8' : '\u25B6' }}
+          </span>
+        </button>
+      </div>
 
       <!-- Connection layer (SVG) -->
       <app-connection-layer
@@ -228,6 +252,23 @@ export class GameBoardComponent {
     // ── Keyboard handlers ─────────────────────────────────────────────
     @HostListener('window:keydown', ['$event'])
     protected onKeyDown(event: KeyboardEvent): void {
+        const mod = event.metaKey || event.ctrlKey;
+
+        // Undo: Ctrl+Z / Cmd+Z
+        if (mod && event.key === 'z' && !event.shiftKey) {
+            event.preventDefault();
+            this.gameState.undo();
+            return;
+        }
+
+        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z or Ctrl+Y / Cmd+Y
+        if ((mod && event.key === 'z' && event.shiftKey) || (mod && event.key === 'y')) {
+            event.preventDefault();
+            this.gameState.redo();
+            return;
+        }
+
+        // Delete connection
         const selectedConn = this.gameState.selectedConnectionId();
         if ((event.key === 'Delete' || event.key === 'Backspace') && selectedConn) {
             event.preventDefault();

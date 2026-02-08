@@ -2,6 +2,8 @@ import { computed, effect, Injectable, inject, signal } from '@angular/core';
 import { StorageKeys, StorageService } from '../storage/storage.service';
 import { getServiceConfig, PortDirection, ServiceType } from './service-types.config';
 
+const MAX_UNDO_STACK = 50;
+
 /**
  * Represents a placed service on the grid
  */
@@ -80,6 +82,12 @@ export class GameStateService {
     // Currently dragged service type (for placement preview)
     readonly draggingType = signal<ServiceType | null>(null);
 
+    // Undo/Redo stacks
+    private readonly undoStack = signal<{ services: PlacedService[]; connections: Connection[] }[]>([]);
+    private readonly redoStack = signal<{ services: PlacedService[]; connections: Connection[] }[]>([]);
+    readonly canUndo = computed(() => this.undoStack().length > 0);
+    readonly canRedo = computed(() => this.redoStack().length > 0);
+
     // Derived: get selected service
     readonly selectedService = computed(() => {
         const id = this.selectedServiceId();
@@ -108,6 +116,7 @@ export class GameStateService {
         if (!this.canPlaceService(type, gridX, gridY)) {
             return null;
         }
+        this.pushSnapshot();
 
         const service: PlacedService = {
             id: `service_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -124,6 +133,7 @@ export class GameStateService {
      * Remove a service from the grid (also removes its connections)
      */
     removeService(id: string): void {
+        this.pushSnapshot();
         this.services.update((services) => services.filter((s) => s.id !== id));
         this.connections.update((conns) => conns.filter((c) => c.source.serviceId !== id && c.target.serviceId !== id));
         if (this.selectedServiceId() === id) {
@@ -182,6 +192,7 @@ export class GameStateService {
         const service = this.services().find((s) => s.id === id);
         if (!service) return false;
         if (!this.canPlaceServiceExcluding(service.type, gridX, gridY, id)) return false;
+        this.pushSnapshot();
 
         this.services.update((services) => services.map((s) => (s.id === id ? { ...s, gridX, gridY } : s)));
         return true;
@@ -194,6 +205,7 @@ export class GameStateService {
         if (!this.canConnect(source, target)) {
             return null;
         }
+        this.pushSnapshot();
 
         const connection: Connection = {
             id: `conn_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`,
@@ -209,6 +221,7 @@ export class GameStateService {
      * Remove a connection
      */
     removeConnection(id: string): void {
+        this.pushSnapshot();
         this.connections.update((conns) => conns.filter((c) => c.id !== id));
         if (this.selectedConnectionId() === id) {
             this.selectedConnectionId.set(null);
@@ -261,10 +274,39 @@ export class GameStateService {
      * Clear all services and connections
      */
     clearAll(): void {
+        this.pushSnapshot();
         this.services.set([]);
         this.connections.set([]);
         this.selectedServiceId.set(null);
         this.selectedConnectionId.set(null);
+    }
+
+    /**
+     * Undo the last action
+     */
+    undo(): void {
+        const stack = this.undoStack();
+        if (stack.length === 0) return;
+
+        const snapshot = stack[stack.length - 1];
+        this.undoStack.update((s) => s.slice(0, -1));
+        this.redoStack.update((s) => [...s, { services: this.services(), connections: this.connections() }]);
+        this.services.set(snapshot.services);
+        this.connections.set(snapshot.connections);
+    }
+
+    /**
+     * Redo the last undone action
+     */
+    redo(): void {
+        const stack = this.redoStack();
+        if (stack.length === 0) return;
+
+        const snapshot = stack[stack.length - 1];
+        this.redoStack.update((s) => s.slice(0, -1));
+        this.undoStack.update((s) => [...s, { services: this.services(), connections: this.connections() }]);
+        this.services.set(snapshot.services);
+        this.connections.set(snapshot.connections);
     }
 
     /**
@@ -277,6 +319,12 @@ export class GameStateService {
         this.addService(ServiceType.DATABASE, 8, 9);
         this.addService(ServiceType.MESSAGE_QUEUE, 2, 4);
         this.addService(ServiceType.LOAD_BALANCER, 14, 5);
+    }
+
+    private pushSnapshot(): void {
+        const snapshot = { services: this.services(), connections: this.connections() };
+        this.undoStack.update((stack) => [...stack.slice(-(MAX_UNDO_STACK - 1)), snapshot]);
+        this.redoStack.set([]);
     }
 
     private loadState(): void {
