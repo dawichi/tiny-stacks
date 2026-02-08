@@ -4,6 +4,18 @@
 
 ---
 
+## Game Vision
+
+**tiny-stacks** is a 2D top-down simulation game ("The Factorio of DevOps"). Players design microservice architectures on a grid: place services, connect them with lines, and watch request packets flow through the system. Pure HTML/CSS/SVG Angular SPA, no backend — state in LocalStorage.
+
+**Core Loop:** Place → Connect → Watch → Optimize → Iterate
+
+**Game Modes (planned):**
+- **Sandbox** — unlimited creative building
+- **Challenges** — specific goals with 3-star rating (e.g. "handle 100 req/s", "fix a broken system in <30s")
+
+---
+
 ## Project Status
 
 **Phase:** Core Interactions Complete
@@ -71,20 +83,24 @@ bun run check:fix   # Fix all auto-fixable issues
 src/
 ├── app/
 │   ├── core/
-│   │   └── game/
-│   │       ├── game-state.service.ts   # State management with Signals + LocalStorage persistence
-│   │       ├── simulation.service.ts  # RAF packet animation engine
-│   │       ├── service-types.config.ts # Service definitions
-│   │       └── port-utils.ts           # Port position math & Bezier paths
+│   │   ├── game/
+│   │   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
+│   │   │   ├── simulation.service.ts    # RAF packet animation engine
+│   │   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
+│   │   │   └── port-utils.ts            # Port position math & Bezier curves
+│   │   └── storage/
+│   │       └── storage.service.ts       # Typed localStorage wrapper
 │   ├── features/
 │   │   ├── board/
-│   │   │   └── game-board.component.ts # CSS Grid board + drag-drop + connections + packet rendering
+│   │   │   └── game-board.component.ts  # Board + drag-drop + connections + packets + toolbar
 │   │   ├── connections/
-│   │   │   └── connection-layer.component.ts # SVG overlay for connection Bezier paths
+│   │   │   └── connection-layer.component.ts  # SVG Bezier paths + packets
+│   │   ├── inspector/
+│   │   │   └── service-inspector.component.ts # Right-side detail panel
 │   │   ├── palette/
-│   │   │   └── service-palette.component.ts  # Floating draggable service palette
+│   │   │   └── service-palette.component.ts   # Bottom-left service palette
 │   │   └── services/
-│   │       └── service.component.ts    # 2D service rendering + port interaction
+│   │       └── service.component.ts     # Service tile + port interaction + drag-to-move
 │   └── app.ts (root component)
 ├── styles.scss (TailwindCSS + CSS variables)
 └── ai/
@@ -93,21 +109,24 @@ src/
 
 ### State Management
 ```typescript
-// GameStateService uses Signals
+// GameStateService — Signals + auto-save + undo/redo
 readonly services = signal<PlacedService[]>([]);
 readonly connections = signal<Connection[]>([]);
-readonly selectedServiceId = signal<string | null>(null);
-readonly draggingType = signal<ServiceType | null>(null);
-readonly occupiedCells = computed(() => /* collision detection */);
+readonly selectedServiceId / selectedConnectionId / draggingType
+readonly occupiedCells = computed(/* collision detection */);
+readonly canUndo / canRedo = computed(/* stack lengths */);
 
-// Methods
+// Mutations (all push undo snapshots)
 addService(type, gridX, gridY)
-removeService(id)         // also removes associated connections
-canPlaceService(type, gridX, gridY)
+removeService(id)              // cascades to connections
+moveService(id, gridX, gridY)  // drag-to-move
 addConnection(source, target)
 removeConnection(id)
-canConnect(source, target) // validates port directions, duplicates, self-connections
-// Auto-save via effect(), auto-load in constructor (LocalStorage key: 'tiny-stacks-state')
+clearAll()
+undo() / redo()                // snapshot-based, max 50 entries
+
+// Persistence: StorageService wraps localStorage with typed keys (StorageKeys enum)
+// Auto-save via effect(), auto-load in constructor
 ```
 
 ### Simulation System
@@ -143,9 +162,14 @@ canConnect(source, target) // validates port directions, duplicates, self-connec
 3. Challenge mode
 
 ### Future
+- Landing page with live demo scene
+- Challenge mode with star ratings
+- Cascading failure visualization (domino effect)
+- Metrics dashboard (throughput, latency, error rate)
 - Service configuration editing (processing time, queue size)
-- Metrics dashboard (throughput, latency)
 - Import/export layouts
+- Ambient audio (muted by default)
+- Service upgrades (Basic → Pro → Enterprise)
 
 ---
 

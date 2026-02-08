@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **tiny-stacks** is a 2D top-down microservices simulation game ("The Factorio of DevOps"). Players place services on a grid, connect them, and watch request packets flow through the system. It's a pure HTML/CSS/SVG Angular SPA with no backend — state is stored in LocalStorage.
 
-Full specification: `spec.md` | AI long-term memory: `ai/project-context.md`
+AI long-term memory: `ai/project-context.md`
 
 ## Commands
 
@@ -34,27 +34,28 @@ Package manager is **Bun** — use `bun install`, not npm/yarn.
 ### Source Structure
 ```
 src/app/
-├── core/game/
-│   ├── game-state.service.ts     # Central state via Angular Signals (providedIn: root)
-│   └── service-types.config.ts   # Service definitions (types, sizes, colors, ports, sim params)
+├── core/
+│   ├── game/
+│   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
+│   │   ├── simulation.service.ts    # RAF packet animation engine
+│   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
+│   │   └── port-utils.ts            # Port position math & Bezier curves
+│   └── storage/
+│       └── storage.service.ts       # Typed localStorage wrapper
 ├── features/
-│   ├── board/game-board.component.ts   # CSS Grid game board with grid lines
-│   └── services/service.component.ts   # Individual service tile (icon, ports, selection)
-└── app.ts                              # Root component, loads demo services
+│   ├── board/game-board.component.ts       # Board + drag-drop + toolbar (undo/redo, play/pause)
+│   ├── connections/connection-layer.component.ts  # SVG Bezier paths + packets
+│   ├── inspector/service-inspector.component.ts   # Right-side detail panel
+│   ├── palette/service-palette.component.ts       # Bottom-left service palette
+│   └── services/service.component.ts              # Service tile + ports + drag-to-move
+└── app.ts                                         # Root component
 ```
 
 ### State Management
-`GameStateService` uses pure Angular Signals — no NgRx. Key signals:
-- `services` — list of `PlacedService` (type, gridX, gridY)
-- `selectedServiceId` — for inspector panel
-- `occupiedCells` — computed `Set<string>` for collision detection (format: `"x,y"`)
-- `gridConfig` — dimensions (20x14) and cell size (48px)
-
-### Service Types
-Six service types defined in `service-types.config.ts`, each with: grid footprint (width × height), pastel color, Lucide icon name, port definitions (position + direction), and simulation properties (processing time, concurrency, queue size).
+`GameStateService` uses pure Angular Signals — no NgRx. Key signals: `services`, `connections`, `selectedServiceId`, `selectedConnectionId`, `draggingType`, `occupiedCells` (computed), `canUndo`/`canRedo` (computed). All mutations push undo snapshots. Auto-saves to localStorage via `StorageService` (typed wrapper with `StorageKeys` enum).
 
 ### Rendering
-Pure DOM-based — no canvas or WebGL. The game board uses CSS background gradients for grid lines and absolutely-positioned divs for service tiles. Services display Lucide icons and colored port dots (green=input, blue=output, orange=bidirectional).
+Pure DOM-based — no canvas or WebGL. Game board uses CSS background gradients for grid lines, absolutely-positioned divs for service tiles, SVG overlay for Bezier connection paths and animated packets. Services display Lucide icons and colored port dots (green=input, blue=output, orange=bidirectional).
 
 ## Code Conventions
 
@@ -90,12 +91,11 @@ Injected Services → Inputs → Outputs → Properties → Lifecycle → Public
 
 ## Workflow Requirements
 
-1. **Before code changes**: Read `spec.md`, `ai/project-context.md`, and `.cursor/rules/conventions/*`
+1. **Before code changes**: Read `ai/project-context.md` and `.cursor/rules/conventions/*`
 2. **After significant changes**: Run `bun run check` to confirm lint + format pass
 3. **Before committing**: Present a summary of changed files with short descriptions and get approval
 4. **Update `ai/project-context.md`** when making significant architectural changes
 
 ## Key References
-- `spec.md` — full game specification (mechanics, UI, service types, visual design)
 - `ai/project-context.md` — current project status, todo list, and architectural notes
 - `styles.scss` — CSS custom properties for the pastel color palette
