@@ -1,5 +1,7 @@
-import { computed, Injectable, signal } from '@angular/core';
+import { computed, effect, Injectable, signal } from '@angular/core';
 import { getServiceConfig, PortDirection, ServiceType } from './service-types.config';
+
+const STORAGE_KEY = 'tiny-stacks-state';
 
 /**
  * Represents a placed service on the grid
@@ -44,6 +46,17 @@ export interface Connection {
     providedIn: 'root',
 })
 export class GameStateService {
+    constructor() {
+        this.loadState();
+
+        // Auto-save when services or connections change
+        effect(() => {
+            const services = this.services();
+            const connections = this.connections();
+            this.saveState(services, connections);
+        });
+    }
+
     // Grid configuration
     readonly gridConfig = signal<GridConfig>({
         width: 20,
@@ -232,5 +245,37 @@ export class GameStateService {
         this.addService(ServiceType.DATABASE, 8, 9);
         this.addService(ServiceType.MESSAGE_QUEUE, 2, 4);
         this.addService(ServiceType.LOAD_BALANCER, 14, 5);
+    }
+
+    /**
+     * Save current state to LocalStorage
+     */
+    private saveState(services: PlacedService[], connections: Connection[]): void {
+        try {
+            const state = JSON.stringify({ services, connections });
+            localStorage.setItem(STORAGE_KEY, state);
+        } catch {
+            // Silently fail if storage is unavailable
+        }
+    }
+
+    /**
+     * Load state from LocalStorage
+     */
+    private loadState(): void {
+        try {
+            const raw = localStorage.getItem(STORAGE_KEY);
+            if (!raw) return;
+
+            const state = JSON.parse(raw) as { services?: PlacedService[]; connections?: Connection[] };
+            if (Array.isArray(state.services)) {
+                this.services.set(state.services);
+            }
+            if (Array.isArray(state.connections)) {
+                this.connections.set(state.connections);
+            }
+        } catch {
+            // Silently fail if data is corrupted
+        }
     }
 }

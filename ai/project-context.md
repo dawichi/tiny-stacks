@@ -6,8 +6,8 @@
 
 ## Project Status
 
-**Phase:** Core Interactions
-**Milestone:** Service Placement + Connections
+**Phase:** Core Interactions Complete
+**Milestone:** Simulation + Persistence
 **Last Updated:** 2026-02-08
 
 ### Current Progress
@@ -25,6 +25,8 @@
 - [x] Port-to-port drag interaction (mousedown→mousemove→mouseup)
 - [x] Service inspector panel (right-side, glassmorphism)
 - [x] Connection selection + Delete key deletion
+- [x] Animated request packets (visual-only, RAF loop, color-coded by request type)
+- [x] Save/Load with LocalStorage (auto-save via effect, auto-load on init)
 
 ---
 
@@ -67,12 +69,13 @@ src/
 ├── app/
 │   ├── core/
 │   │   └── game/
-│   │       ├── game-state.service.ts   # State management with Signals
+│   │       ├── game-state.service.ts   # State management with Signals + LocalStorage persistence
+│   │       ├── simulation.service.ts  # RAF packet animation engine
 │   │       ├── service-types.config.ts # Service definitions
 │   │       └── port-utils.ts           # Port position math & Bezier paths
 │   ├── features/
 │   │   ├── board/
-│   │   │   └── game-board.component.ts # CSS Grid board + drag-drop + connection wiring
+│   │   │   └── game-board.component.ts # CSS Grid board + drag-drop + connections + packet rendering
 │   │   ├── connections/
 │   │   │   └── connection-layer.component.ts # SVG overlay for connection Bezier paths
 │   │   ├── palette/
@@ -101,7 +104,14 @@ canPlaceService(type, gridX, gridY)
 addConnection(source, target)
 removeConnection(id)
 canConnect(source, target) // validates port directions, duplicates, self-connections
+// Auto-save via effect(), auto-load in constructor (LocalStorage key: 'tiny-stacks-state')
 ```
+
+### Simulation System
+- `SimulationService` — `requestAnimationFrame` loop, `packets` signal, `running` signal
+- Packets spawn randomly on connections (300-800ms interval), travel at 2000ms/connection
+- Color-coded by request type: GET (#87CEEB), POST (#A8E6CF), PUT (#FFE5A0), DELETE (#FFCBA4)
+- Positioned via parametric cubic Bezier evaluation (`evaluateBezier(t, curve)` in `port-utils.ts`)
 
 ### Connection System
 - **Model:** `Connection { id, source: PortRef, target: PortRef }` where `PortRef { serviceId, portIndex }`
@@ -125,12 +135,14 @@ canConnect(source, target) // validates port directions, duplicates, self-connec
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Animated request packets (CSS animations on SVG paths)
-2. Save/Load with LocalStorage
+1. Typed LocalStorage wrapper (StorageService)
+2. Service drag-to-move on the grid
+3. Undo/Redo system
 
 ### Future
 - Cascading failure visualization
 - Challenge mode
+- Responsive grid (zoom/pan)
 
 ---
 
