@@ -9,8 +9,9 @@ import { getServiceConfig } from '../../core/game/service-types.config';
     imports: [LucideAngularModule],
     template: `
     <div
-      class="service absolute rounded-lg flex flex-col items-center justify-center cursor-pointer
+      class="service absolute rounded-lg flex flex-col items-center justify-center cursor-grab
              transition-all duration-150 hover:scale-[1.02] hover:shadow-lg"
+      (mousedown)="onServiceMouseDown($event)"
       [class.ring-2]="isSelected()"
       [class.ring-blue-500]="isSelected()"
       [class.ring-offset-2]="isSelected()"
@@ -81,6 +82,7 @@ export class ServiceComponent {
     // ── Outputs ────────────────────────────────────────────────────────
     readonly portDragStart = output<{ serviceId: string; portIndex: number }>();
     readonly portDragEnd = output<{ serviceId: string; portIndex: number }>();
+    readonly moveDragStart = output<{ serviceId: string }>();
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly icons = {
@@ -147,6 +149,11 @@ export class ServiceComponent {
             default:
                 return baseY + cellSize / 2 - 6;
         }
+    }
+
+    protected onServiceMouseDown(event: MouseEvent): void {
+        event.preventDefault();
+        this.moveDragStart.emit({ serviceId: this.service().id });
     }
 
     protected onPortMouseDown(event: MouseEvent, portIndex: number): void {

@@ -18,6 +18,7 @@ interface HoverPosition {
     template: `
     <div
       class="game-board relative bg-slate-100 rounded-lg overflow-hidden"
+      [class.cursor-grabbing]="moveDragServiceId()"
       [style.width.px]="boardWidth()"
       [style.height.px]="boardHeight()"
       (dragover)="onDragOver($event)"
@@ -86,6 +87,7 @@ interface HoverPosition {
           (click)="onServiceClick(service.id)"
           (portDragStart)="onPortDragStart($event)"
           (portDragEnd)="onPortDragEnd($event)"
+          (moveDragStart)="onMoveDragStart($event)"
         />
       }
     </div>
@@ -117,6 +119,9 @@ export class GameBoardComponent {
     protected readonly connectionDragCursor = signal<{ x: number; y: number } | null>(null);
     protected readonly connectionDragActive = computed(() => this.connectionDragSource() !== null);
 
+    // Move drag state
+    protected readonly moveDragServiceId = signal<string | null>(null);
+
     protected readonly cellSize = computed(() => this.gameState.gridConfig().cellSize);
 
     protected readonly boardWidth = computed(() => {
@@ -137,15 +142,32 @@ export class GameBoardComponent {
     `;
     });
 
-    // ── Placement preview computed signals ─────────────────────────────
+    // ── Placement/move preview computed signals ────────────────────────
+    private readonly previewServiceType = computed<ServiceType | null>(() => {
+        const paletteType = this.gameState.draggingType();
+        if (paletteType) return paletteType;
+
+        const moveId = this.moveDragServiceId();
+        if (moveId) {
+            const service = this.gameState.services().find((s) => s.id === moveId);
+            return service?.type ?? null;
+        }
+        return null;
+    });
+
     protected readonly previewVisible = computed(() => {
-        return this.gameState.draggingType() !== null && this.hoverPosition() !== null;
+        return this.previewServiceType() !== null && this.hoverPosition() !== null;
     });
 
     protected readonly previewValid = computed(() => {
-        const type = this.gameState.draggingType();
+        const type = this.previewServiceType();
         const pos = this.hoverPosition();
         if (!type || !pos) return false;
+
+        const moveId = this.moveDragServiceId();
+        if (moveId) {
+            return this.gameState.canPlaceServiceExcluding(type, pos.gridX, pos.gridY, moveId);
+        }
         return this.gameState.canPlaceService(type, pos.gridX, pos.gridY);
     });
 
@@ -160,13 +182,13 @@ export class GameBoardComponent {
     });
 
     protected readonly previewWidth = computed(() => {
-        const type = this.gameState.draggingType();
+        const type = this.previewServiceType();
         if (!type) return 0;
         return getServiceConfig(type).gridWidth * this.cellSize();
     });
 
     protected readonly previewHeight = computed(() => {
-        const type = this.gameState.draggingType();
+        const type = this.previewServiceType();
         if (!type) return 0;
         return getServiceConfig(type).gridHeight * this.cellSize();
     });
@@ -274,14 +296,20 @@ export class GameBoardComponent {
     }
 
     protected onBoardMouseMove(event: MouseEvent): void {
-        if (!this.connectionDragSource()) return;
+        if (this.connectionDragSource()) {
+            const target = event.currentTarget as HTMLElement;
+            const rect = target.getBoundingClientRect();
+            this.connectionDragCursor.set({
+                x: event.clientX - rect.left,
+                y: event.clientY - rect.top,
+            });
+            return;
+        }
 
-        const target = event.currentTarget as HTMLElement;
-        const rect = target.getBoundingClientRect();
-        this.connectionDragCursor.set({
-            x: event.clientX - rect.left,
-            y: event.clientY - rect.top,
-        });
+        if (this.moveDragServiceId()) {
+            const gridPos = this.mouseEventToGrid(event);
+            this.hoverPosition.set(gridPos);
+        }
     }
 
     protected onBoardMouseUp(): void {
@@ -289,16 +317,43 @@ export class GameBoardComponent {
             this.connectionDragSource.set(null);
             this.connectionDragCursor.set(null);
         }
+
+        const moveId = this.moveDragServiceId();
+        if (moveId) {
+            const pos = this.hoverPosition();
+            if (pos && this.previewValid()) {
+                this.gameState.moveService(moveId, pos.gridX, pos.gridY);
+            }
+            this.moveDragServiceId.set(null);
+            this.hoverPosition.set(null);
+        }
+    }
+
+    // ── Move drag methods ────────────────────────────────────────────
+    protected onMoveDragStart(event: { serviceId: string }): void {
+        if (this.connectionDragSource()) return;
+        this.moveDragServiceId.set(event.serviceId);
+        this.gameState.selectedConnectionId.set(null);
+        this.gameState.selectService(event.serviceId);
     }
 
     // ── Private helpers ────────────────────────────────────────────────
     private eventToGrid(event: DragEvent): HoverPosition | null {
         const target = event.currentTarget as HTMLElement;
         const rect = target.getBoundingClientRect();
-        const cellSize = this.cellSize();
+        return this.clientToGrid(event.clientX, event.clientY, rect);
+    }
 
-        const gridX = Math.floor((event.clientX - rect.left) / cellSize);
-        const gridY = Math.floor((event.clientY - rect.top) / cellSize);
+    private mouseEventToGrid(event: MouseEvent): HoverPosition | null {
+        const target = event.currentTarget as HTMLElement;
+        const rect = target.getBoundingClientRect();
+        return this.clientToGrid(event.clientX, event.clientY, rect);
+    }
+
+    private clientToGrid(clientX: number, clientY: number, rect: DOMRect): HoverPosition | null {
+        const cellSize = this.cellSize();
+        const gridX = Math.floor((clientX - rect.left) / cellSize);
+        const gridY = Math.floor((clientY - rect.top) / cellSize);
 
         const grid = this.gameState.gridConfig();
         if (gridX < 0 || gridY < 0 || gridX >= grid.width || gridY >= grid.height) {

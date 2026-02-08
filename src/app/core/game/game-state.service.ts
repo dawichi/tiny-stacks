@@ -135,6 +135,14 @@ export class GameStateService {
      * Check if a service can be placed at a position
      */
     canPlaceService(type: ServiceType, gridX: number, gridY: number): boolean {
+        return this.canPlaceServiceExcluding(type, gridX, gridY, null);
+    }
+
+    /**
+     * Check if a service can be placed at a position, optionally excluding a service from collision detection.
+     * Used during drag-to-move so the service being moved doesn't collide with itself.
+     */
+    canPlaceServiceExcluding(type: ServiceType, gridX: number, gridY: number, excludeId: string | null): boolean {
         const config = getServiceConfig(type);
         const grid = this.gridConfig();
 
@@ -143,8 +151,19 @@ export class GameStateService {
         if (gridX + config.gridWidth > grid.width) return false;
         if (gridY + config.gridHeight > grid.height) return false;
 
+        // Build occupied cells, excluding the service being moved
+        const occupied = new Set<string>();
+        for (const service of this.services()) {
+            if (service.id === excludeId) continue;
+            const sConfig = getServiceConfig(service.type);
+            for (let dx = 0; dx < sConfig.gridWidth; dx++) {
+                for (let dy = 0; dy < sConfig.gridHeight; dy++) {
+                    occupied.add(`${service.gridX + dx},${service.gridY + dy}`);
+                }
+            }
+        }
+
         // Check for collisions
-        const occupied = this.occupiedCells();
         for (let dx = 0; dx < config.gridWidth; dx++) {
             for (let dy = 0; dy < config.gridHeight; dy++) {
                 if (occupied.has(`${gridX + dx},${gridY + dy}`)) {
@@ -153,6 +172,18 @@ export class GameStateService {
             }
         }
 
+        return true;
+    }
+
+    /**
+     * Move a service to a new grid position
+     */
+    moveService(id: string, gridX: number, gridY: number): boolean {
+        const service = this.services().find((s) => s.id === id);
+        if (!service) return false;
+        if (!this.canPlaceServiceExcluding(service.type, gridX, gridY, id)) return false;
+
+        this.services.update((services) => services.map((s) => (s.id === id ? { ...s, gridX, gridY } : s)));
         return true;
     }
 
