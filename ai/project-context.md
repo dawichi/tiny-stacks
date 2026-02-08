@@ -14,6 +14,8 @@
 - **Sandbox** — unlimited creative building
 - **Challenges** — specific goals with 3-star rating (e.g. "handle 100 req/s", "fix a broken system in <30s")
 
+**Simulation design**: See `ai/simulation-design.md` for the full design of the tick-based simulation engine, service behaviors, request lifecycle, and challenge system.
+
 ---
 
 ## Project Status
