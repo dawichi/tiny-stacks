@@ -45,6 +45,8 @@
 - [x] Response paths (packets travel back to Origin after reaching terminal services)
 - [x] Cache hit/miss mechanics (resource tracking, GET hit/miss, POST/PUT/DELETE invalidation)
 - [x] Cache stats in inspector (hit rate, hit/miss counts, cached resources)
+- [x] Failed packet pop animation (expanding red X that fades out at overloaded services)
+- [x] Example setup button (Origin → Gateway → REST → Cache → Database)
 - [x] Save/Load with LocalStorage (auto-save via effect, auto-load on init)
 - [x] Typed StorageService wrapper for localStorage
 - [x] Service drag-to-move on the grid

@@ -37,6 +37,16 @@ interface HoverPosition {
       <!-- Toolbar buttons -->
       <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
         @if (simulation.running()) {
+          <!-- Debug copy -->
+          <button
+            class="px-1.5 py-0.5 rounded-md bg-white/40 backdrop-blur-sm
+                   text-[10px] font-mono text-slate-400 hover:text-slate-600
+                   hover:bg-white/60 transition-all duration-150 select-none"
+            [class.text-emerald-500]="debugCopied()"
+            (click)="onCopyDebug()"
+          >
+            {{ debugCopied() ? 'Copied!' : 'Debug' }}
+          </button>
           <!-- Metrics chips -->
           <div class="flex items-center gap-1 mr-0.5">
             <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
@@ -84,6 +94,16 @@ interface HoverPosition {
           aria-label="Load example setup"
         >
           Example
+        </button>
+        <button
+          class="px-2 py-1 rounded-lg flex items-center justify-center
+                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+                 hover:bg-white/90 transition-all duration-200
+                 text-[10px] font-medium text-red-400 select-none"
+          (click)="onLoadStressTest()"
+          aria-label="Load stress test"
+        >
+          Stress
         </button>
         <button
           class="w-8 h-8 rounded-full flex items-center justify-center
@@ -164,6 +184,43 @@ interface HoverPosition {
           (portDragEnd)="onPortDragEnd($event)"
           (moveDragStart)="onMoveDragStart($event)"
         />
+      }
+
+      <!-- Failed packet overlay (above services) -->
+      @if (renderedFailedPackets().length > 0) {
+        <svg
+          class="absolute inset-0 pointer-events-none z-10"
+          [attr.width]="boardWidth()"
+          [attr.height]="boardHeight()"
+        >
+          @for (fp of renderedFailedPackets(); track fp.id) {
+            <circle
+              [attr.cx]="fp.x"
+              [attr.cy]="fp.y"
+              [attr.r]="6 + fp.progress * 14"
+              fill="#ef4444"
+              [attr.opacity]="0.8 - fp.progress * 0.8"
+            />
+            <line
+              [attr.x1]="fp.x - 4 - fp.progress * 4"
+              [attr.y1]="fp.y - 4 - fp.progress * 4"
+              [attr.x2]="fp.x + 4 + fp.progress * 4"
+              [attr.y2]="fp.y + 4 + fp.progress * 4"
+              stroke="white"
+              [attr.stroke-width]="2"
+              [attr.opacity]="1 - fp.progress"
+            />
+            <line
+              [attr.x1]="fp.x + 4 + fp.progress * 4"
+              [attr.y1]="fp.y - 4 - fp.progress * 4"
+              [attr.x2]="fp.x - 4 - fp.progress * 4"
+              [attr.y2]="fp.y + 4 + fp.progress * 4"
+              stroke="white"
+              [attr.stroke-width]="2"
+              [attr.opacity]="1 - fp.progress"
+            />
+          }
+        </svg>
       }
     </div>
   `,
@@ -302,6 +359,27 @@ export class GameBoardComponent {
             .filter((p) => p !== null);
     });
 
+    // ── Failed packet rendering ─────────────────────────────────────────
+    protected readonly renderedFailedPackets = computed(() => {
+        const failedPackets = this.simulation.failedPackets();
+        if (failedPackets.length === 0) return [];
+
+        const services = this.gameState.services();
+        const cellSize = this.cellSize();
+
+        return failedPackets
+            .map((fp) => {
+                const svc = services.find((s) => s.id === fp.serviceId);
+                if (!svc) return null;
+                const config = getServiceConfig(svc.type);
+                const x = (svc.gridX + config.gridWidth / 2) * cellSize;
+                const y = (svc.gridY + config.gridHeight / 2) * cellSize;
+                const progress = 1 - fp.remainingMs / 500;
+                return { x, y, progress, id: fp.id };
+            })
+            .filter((fp) => fp !== null);
+    });
+
     // ── Keyboard handlers ─────────────────────────────────────────────
     @HostListener('window:keydown', ['$event'])
     protected onKeyDown(event: KeyboardEvent): void {
@@ -431,11 +509,27 @@ export class GameBoardComponent {
         this.gameState.selectService(event.serviceId);
     }
 
+    protected readonly debugCopied = signal(false);
+
+    protected onCopyDebug(): void {
+        const snapshot = this.simulation.debugSnapshot();
+        navigator.clipboard.writeText(snapshot);
+        this.debugCopied.set(true);
+        setTimeout(() => this.debugCopied.set(false), 1500);
+    }
+
     protected onLoadExample(): void {
         if (this.simulation.running()) {
             this.simulation.stop();
         }
         this.gameState.loadExampleSetup();
+    }
+
+    protected onLoadStressTest(): void {
+        if (this.simulation.running()) {
+            this.simulation.stop();
+        }
+        this.gameState.loadStressTestSetup();
     }
 
     protected formatNumber(value: number): string {

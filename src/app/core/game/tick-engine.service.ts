@@ -66,6 +66,17 @@ export interface Packet {
 }
 
 /**
+ * A failed request shown as a fading red pop at a service
+ */
+export interface FailedPacket {
+    id: string;
+    serviceId: string;
+    remainingMs: number;
+}
+
+const FAILED_PACKET_DURATION = 500; // ms for the pop animation
+
+/**
  * Tick-based simulation engine.
  *
  * Replaces the decorative SimulationService with a real request lifecycle:
@@ -101,6 +112,11 @@ export class TickEngineService {
     // Cache state
     private cacheContents = new Map<string, Set<string>>();
     private _cacheStats = new Map<string, { hits: number; misses: number }>();
+
+    // Failed packet animations
+    private readonly _failedPackets = signal<FailedPacket[]>([]);
+    readonly failedPackets = this._failedPackets.asReadonly();
+    private failedCounter = 0;
 
     // ── Computed: packets for board rendering ──────────────────────────
     readonly packets = computed<Packet[]>(() => {
@@ -203,6 +219,55 @@ export class TickEngineService {
         this.intervalId = setInterval(() => this.tick(), TICK_MS);
     }
 
+    /**
+     * Capture a debug snapshot of the full simulation state for diagnostics.
+     */
+    debugSnapshot(): string {
+        const services = this.gameState.services();
+        const connections = this.gameState.connections();
+        const requests = this._requests();
+        const states = this._runtimeStates();
+
+        const requestsByStatus: Record<string, number> = {};
+        for (const r of requests) {
+            const key = `${r.direction}:${r.status}`;
+            requestsByStatus[key] = (requestsByStatus[key] ?? 0) + 1;
+        }
+
+        const serviceStates = services.map((svc) => {
+            const config = getServiceConfig(svc.type);
+            const state = states.get(svc.id);
+            const outgoing = connections.filter((c) => c.source.serviceId === svc.id).length;
+            const incoming = connections.filter((c) => c.target.serviceId === svc.id).length;
+            const cacheStats = this._cacheStats.get(svc.id);
+            const cachedResources = this.cacheContents.get(svc.id)?.size ?? 0;
+
+            return {
+                name: config.name,
+                type: svc.type,
+                queue: state ? `${state.queue.length}/${config.queueSize}` : '-',
+                processing: state ? `${state.processing.length}/${config.maxConcurrency}` : '-',
+                processingTime: `${config.baseProcessingTime}ms`,
+                connections: `in:${incoming} out:${outgoing}`,
+                ...(cacheStats
+                    ? { cache: `hits:${cacheStats.hits} misses:${cacheStats.misses} cached:${cachedResources}` }
+                    : {}),
+            };
+        });
+
+        const snapshot = {
+            tick: this.tickCount,
+            speed: this.speed(),
+            metrics: this.metrics(),
+            requestsByStatus,
+            totalRequests: requests.length,
+            failedPacketAnims: this._failedPackets().length,
+            services: serviceStates,
+        };
+
+        return JSON.stringify(snapshot, null, 2);
+    }
+
     stop(): void {
         this.running.set(false);
         if (this.intervalId !== null) {
@@ -211,6 +276,7 @@ export class TickEngineService {
         }
         this._requests.set([]);
         this._runtimeStates.set(new Map());
+        this._failedPackets.set([]);
         this.cacheContents.clear();
         this._cacheStats.clear();
         this.resetMetrics();
@@ -234,8 +300,14 @@ export class TickEngineService {
         }
     }
 
-    private recordFailure(): void {
+    private recordFailure(serviceId?: string): void {
         this._failedCount++;
+        if (serviceId) {
+            this._failedPackets.update((fps) => [
+                ...fps,
+                { id: `fail_${this.failedCounter++}`, serviceId, remainingMs: FAILED_PACKET_DURATION },
+            ]);
+        }
     }
 
     // ── Private: Response Path ──────────────────────────────────────────
@@ -421,7 +493,7 @@ export class TickEngineService {
             // Check queue capacity
             if (state.queue.length + state.processing.length >= targetConfig.queueSize + targetConfig.maxConcurrency) {
                 req.status = 'failed';
-                this.recordFailure();
+                this.recordFailure(targetServiceId);
             } else {
                 req.status = 'queued';
                 req.currentServiceId = targetServiceId;
@@ -496,6 +568,13 @@ export class TickEngineService {
             state.queue = state.queue.filter((r) => requests.includes(r));
             state.processing = state.processing.filter((r) => requests.includes(r));
         }
+
+        // Decay failed packet animations
+        const failedPackets = this._failedPackets().map((fp) => ({
+            ...fp,
+            remainingMs: fp.remainingMs - simDelta,
+        }));
+        this._failedPackets.set(failedPackets.filter((fp) => fp.remainingMs > 0));
 
         this._requests.set(requests);
         this._runtimeStates.set(runtimeStates);
