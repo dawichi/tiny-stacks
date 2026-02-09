@@ -2,7 +2,7 @@ import { Component, computed, HostListener, inject, signal } from '@angular/core
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
-import { SimulationService } from '../../core/game/simulation.service';
+import { TickEngineService } from '../../core/game/tick-engine.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
 
@@ -133,7 +133,7 @@ interface HoverPosition {
 export class GameBoardComponent {
     // ── Injected Services ──────────────────────────────────────────────
     protected readonly gameState = inject(GameStateService);
-    protected readonly simulation = inject(SimulationService);
+    protected readonly simulation = inject(TickEngineService);
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);

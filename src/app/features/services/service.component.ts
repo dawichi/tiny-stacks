@@ -1,5 +1,5 @@
 import { Component, computed, input, output } from '@angular/core';
-import { Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
+import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
 import { PlacedService } from '../../core/game/game-state.service';
 import { getServiceConfig } from '../../core/game/service-types.config';
 
@@ -86,6 +86,7 @@ export class ServiceComponent {
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly icons = {
+        cloud: Cloud,
         globe: Globe,
         server: Server,
         database: Database,

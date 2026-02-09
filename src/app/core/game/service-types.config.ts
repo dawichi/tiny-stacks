@@ -2,6 +2,7 @@
  * Service type identifiers
  */
 export enum ServiceType {
+    ORIGIN = 'origin',
     API_GATEWAY = 'api_gateway',
     REST_SERVICE = 'rest_service',
     DATABASE = 'database',
@@ -58,6 +59,20 @@ export interface ServiceTypeConfig {
  * All service type configurations
  */
 export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
+    [ServiceType.ORIGIN]: {
+        type: ServiceType.ORIGIN,
+        name: 'Origin',
+        description: 'Traffic source. Generates requests that flow through the system.',
+        gridWidth: 1,
+        gridHeight: 1,
+        color: '#FF8B8B', // Coral
+        icon: 'cloud',
+        ports: [{ cellOffsetX: 0, cellOffsetY: 0, edge: 'east', direction: PortDirection.OUTPUT }],
+        baseProcessingTime: 0,
+        maxConcurrency: 0,
+        queueSize: 0,
+    },
+
     [ServiceType.API_GATEWAY]: {
         type: ServiceType.API_GATEWAY,
         name: 'API Gateway',

@@ -1,5 +1,5 @@
 import { Component, computed, inject, signal } from '@angular/core';
-import { Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
+import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
 import { GameStateService } from '../../core/game/game-state.service';
 import {
     getAllServiceTypes,
@@ -105,6 +105,7 @@ export class ServicePaletteComponent {
     protected readonly serviceTypes = computed(() => getAllServiceTypes());
 
     private readonly icons = {
+        cloud: Cloud,
         globe: Globe,
         server: Server,
         database: Database,
