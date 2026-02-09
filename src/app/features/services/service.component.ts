@@ -1,7 +1,8 @@
 import { Component, computed, input, output } from '@angular/core';
 import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
 import { PlacedService } from '../../core/game/game-state.service';
-import { getServiceConfig } from '../../core/game/service-types.config';
+import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
+import type { ServiceVisualState } from '../../core/game/tick-engine.service';
 
 @Component({
     selector: 'app-service',
@@ -10,11 +11,14 @@ import { getServiceConfig } from '../../core/game/service-types.config';
     template: `
     <div
       class="service absolute rounded-lg flex flex-col items-center justify-center cursor-grab
-             transition-all duration-150 hover:scale-[1.02] hover:shadow-lg"
+             transition-shadow duration-150 hover:scale-[1.02] hover:shadow-lg overflow-hidden"
       (mousedown)="onServiceMouseDown($event)"
       [class.ring-2]="isSelected()"
       [class.ring-blue-500]="isSelected()"
       [class.ring-offset-2]="isSelected()"
+      [class.processing]="isProcessing()"
+      [class.overloaded]="isOverloaded()"
+      [class.origin-active]="isOriginActive()"
       [style.left.px]="positionX()"
       [style.top.px]="positionY()"
       [style.width.px]="width()"
@@ -35,6 +39,17 @@ import { getServiceConfig } from '../../core/game/service-types.config';
       >
         {{ config().name }}
       </span>
+
+      <!-- Queue fill bar -->
+      @if (showQueueBar()) {
+        <div class="queue-bar absolute bottom-0 left-0 right-0 h-[3px] bg-black/10">
+          <div
+            class="h-full transition-all duration-200"
+            [style.width.%]="queueBarWidth()"
+            [style.background-color]="queueBarColor()"
+          ></div>
+        </div>
+      }
 
       <!-- Port dots -->
       @for (port of config().ports; track $index) {
@@ -69,6 +84,33 @@ import { getServiceConfig } from '../../core/game/service-types.config';
       box-shadow: 0 0 8px rgba(59, 130, 246, 0.6);
       z-index: 10;
     }
+
+    .processing {
+      animation: processing-pulse 1.5s ease-in-out infinite;
+    }
+
+    .overloaded {
+      animation: overload-pulse 0.8s ease-in-out infinite;
+    }
+
+    .origin-active {
+      animation: origin-breathe 2s ease-in-out infinite;
+    }
+
+    @keyframes processing-pulse {
+      0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2); }
+      50% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -2px rgba(0,0,0,0.1), inset 0 1px 0 rgba(255,255,255,0.2), 0 0 12px rgba(255,255,255,0.4); }
+    }
+
+    @keyframes overload-pulse {
+      0%, 100% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 0 0 2px rgba(239,68,68,0.3); }
+      50% { box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1), 0 0 0 4px rgba(239,68,68,0.5), 0 0 16px rgba(239,68,68,0.3); }
+    }
+
+    @keyframes origin-breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.03); }
+    }
   `,
     ],
 })
@@ -78,6 +120,8 @@ export class ServiceComponent {
     readonly cellSize = input.required<number>();
     readonly isSelected = input<boolean>(false);
     readonly connectionDragActive = input<boolean>(false);
+    readonly runtimeVisual = input<ServiceVisualState | null>(null);
+    readonly simulationRunning = input<boolean>(false);
 
     // ── Outputs ────────────────────────────────────────────────────────
     readonly portDragStart = output<{ serviceId: string; portIndex: number }>();
@@ -108,6 +152,39 @@ export class ServiceComponent {
     protected readonly iconComponent = computed(() => {
         const iconName = this.config().icon as keyof typeof this.icons;
         return this.icons[iconName] || Globe;
+    });
+
+    // ── Runtime visual computed signals ────────────────────────────────
+    protected readonly isProcessing = computed(() => {
+        const visual = this.runtimeVisual();
+        return visual !== null && visual.processingRatio > 0;
+    });
+
+    protected readonly isOverloaded = computed(() => {
+        return this.runtimeVisual()?.isOverloaded ?? false;
+    });
+
+    protected readonly isOriginActive = computed(() => {
+        return this.service().type === ServiceType.ORIGIN && this.simulationRunning();
+    });
+
+    protected readonly showQueueBar = computed(() => {
+        const visual = this.runtimeVisual();
+        return visual !== null && visual.queueRatio > 0;
+    });
+
+    protected readonly queueBarWidth = computed(() => {
+        const visual = this.runtimeVisual();
+        return visual ? Math.min(visual.queueRatio * 100, 100) : 0;
+    });
+
+    protected readonly queueBarColor = computed(() => {
+        const visual = this.runtimeVisual();
+        if (!visual) return '#22c55e';
+        const ratio = visual.queueRatio;
+        if (ratio > 0.8) return '#ef4444'; // red-500
+        if (ratio > 0.5) return '#eab308'; // yellow-500
+        return '#22c55e'; // green-500
     });
 
     // ── Methods ────────────────────────────────────────────────────────

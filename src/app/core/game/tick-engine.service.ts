@@ -27,6 +27,15 @@ const DEFAULT_TRAFFIC: TrafficPattern = {
 };
 
 /**
+ * Per-service visual state derived from runtime simulation data
+ */
+export interface ServiceVisualState {
+    queueRatio: number;
+    processingRatio: number;
+    isOverloaded: boolean;
+}
+
+/**
  * Packet shape matching the old SimulationService for board compatibility
  */
 export interface Packet {
@@ -75,6 +84,32 @@ export class TickEngineService {
                 progress: r.travelProgress,
                 color: REQUEST_METHOD_COLORS[r.method],
             }));
+    });
+
+    // ── Computed: per-service visual state ───────────────────────────
+    readonly serviceVisuals = computed<Map<string, ServiceVisualState>>(() => {
+        const states = this._runtimeStates();
+        const services = this.gameState.services();
+        const result = new Map<string, ServiceVisualState>();
+
+        for (const svc of services) {
+            if (svc.type === ServiceType.ORIGIN) continue;
+
+            const state = states.get(svc.id);
+            if (!state) continue;
+
+            const config = getServiceConfig(svc.type);
+            const queueRatio = config.queueSize > 0 ? state.queue.length / config.queueSize : 0;
+            const processingRatio = config.maxConcurrency > 0 ? state.processing.length / config.maxConcurrency : 0;
+
+            result.set(svc.id, {
+                queueRatio,
+                processingRatio,
+                isOverloaded: queueRatio > 0.8,
+            });
+        }
+
+        return result;
     });
 
     constructor() {

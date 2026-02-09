@@ -2,7 +2,7 @@ import { Component, computed, HostListener, inject, signal } from '@angular/core
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
-import { TickEngineService } from '../../core/game/tick-engine.service';
+import { type ServiceVisualState, TickEngineService } from '../../core/game/tick-engine.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
 
@@ -108,6 +108,8 @@ interface HoverPosition {
           [cellSize]="cellSize()"
           [isSelected]="gameState.selectedServiceId() === service.id"
           [connectionDragActive]="connectionDragActive()"
+          [runtimeVisual]="getServiceVisual(service.id)"
+          [simulationRunning]="simulation.running()"
           (click)="onServiceClick(service.id)"
           (portDragStart)="onPortDragStart($event)"
           (portDragEnd)="onPortDragEnd($event)"
@@ -376,6 +378,10 @@ export class GameBoardComponent {
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
+    }
+
+    protected getServiceVisual(serviceId: string): ServiceVisualState | null {
+        return this.simulation.serviceVisuals().get(serviceId) ?? null;
     }
 
     // ── Private helpers ────────────────────────────────────────────────
