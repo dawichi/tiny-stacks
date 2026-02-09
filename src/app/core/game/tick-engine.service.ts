@@ -13,6 +13,8 @@ import {
 const TICK_RATE = 60;
 const TICK_MS = 1000 / TICK_RATE;
 const HOP_DURATION = 300; // ms to travel along a connection
+const LATENCY_WINDOW_SIZE = 100;
+const THROUGHPUT_WINDOW_MS = 3000;
 
 /** Default traffic pattern for Origin services */
 const DEFAULT_TRAFFIC: TrafficPattern = {
@@ -27,12 +29,27 @@ const DEFAULT_TRAFFIC: TrafficPattern = {
 };
 
 /**
+ * Global simulation metrics
+ */
+export interface SimMetrics {
+    totalCompleted: number;
+    totalFailed: number;
+    activeRequests: number;
+    avgLatency: number;
+    throughput: number;
+}
+
+/**
  * Per-service visual state derived from runtime simulation data
  */
 export interface ServiceVisualState {
     queueRatio: number;
     processingRatio: number;
     isOverloaded: boolean;
+    queueCount: number;
+    processingCount: number;
+    queueCapacity: number;
+    maxConcurrency: number;
 }
 
 /**
@@ -65,11 +82,18 @@ export class TickEngineService {
 
     private readonly _requests = signal<SimRequest[]>([]);
     private readonly _runtimeStates = signal<Map<string, ServiceRuntimeState>>(new Map());
+    private readonly _metricsVersion = signal(0);
 
     private intervalId: ReturnType<typeof setInterval> | null = null;
     private tickCount = 0;
     private requestCounter = 0;
     private spawnAccumulators = new Map<string, number>();
+
+    // Metrics tracking
+    private _completedCount = 0;
+    private _failedCount = 0;
+    private _latencyWindow: number[] = [];
+    private _throughputTimestamps: number[] = [];
 
     // ── Computed: packets for board rendering ──────────────────────────
     readonly packets = computed<Packet[]>(() => {
@@ -106,10 +130,34 @@ export class TickEngineService {
                 queueRatio,
                 processingRatio,
                 isOverloaded: queueRatio > 0.8,
+                queueCount: state.queue.length,
+                processingCount: state.processing.length,
+                queueCapacity: config.queueSize,
+                maxConcurrency: config.maxConcurrency,
             });
         }
 
         return result;
+    });
+
+    // ── Computed: global simulation metrics ────────────────────────────
+    readonly metrics = computed<SimMetrics>(() => {
+        this._metricsVersion();
+        const now = performance.now();
+        const recentTimestamps = this._throughputTimestamps.filter((t) => now - t < THROUGHPUT_WINDOW_MS);
+        const throughput = recentTimestamps.length > 0 ? (recentTimestamps.length / THROUGHPUT_WINDOW_MS) * 1000 : 0;
+        const avgLatency =
+            this._latencyWindow.length > 0
+                ? this._latencyWindow.reduce((sum, l) => sum + l, 0) / this._latencyWindow.length
+                : 0;
+
+        return {
+            totalCompleted: this._completedCount,
+            totalFailed: this._failedCount,
+            activeRequests: this._requests().length,
+            avgLatency,
+            throughput,
+        };
     });
 
     constructor() {
@@ -130,6 +178,7 @@ export class TickEngineService {
         this.running.set(true);
         this.tickCount = 0;
         this.spawnAccumulators.clear();
+        this.resetMetrics();
         this.intervalId = setInterval(() => this.tick(), TICK_MS);
     }
 
@@ -141,6 +190,29 @@ export class TickEngineService {
         }
         this._requests.set([]);
         this._runtimeStates.set(new Map());
+        this.resetMetrics();
+    }
+
+    // ── Private: Metrics ──────────────────────────────────────────────
+    private resetMetrics(): void {
+        this._completedCount = 0;
+        this._failedCount = 0;
+        this._latencyWindow = [];
+        this._throughputTimestamps = [];
+        this._metricsVersion.set(0);
+    }
+
+    private recordCompletion(latency: number): void {
+        this._completedCount++;
+        this._throughputTimestamps.push(performance.now());
+        this._latencyWindow.push(latency);
+        if (this._latencyWindow.length > LATENCY_WINDOW_SIZE) {
+            this._latencyWindow.shift();
+        }
+    }
+
+    private recordFailure(): void {
+        this._failedCount++;
     }
 
     // ── Private: Tick Loop ─────────────────────────────────────────────
@@ -204,6 +276,7 @@ export class TickEngineService {
             const conn = connections.find((c) => c.id === req.connectionId);
             if (!conn) {
                 req.status = 'failed';
+                this.recordFailure();
                 continue;
             }
 
@@ -211,6 +284,7 @@ export class TickEngineService {
             const targetService = services.find((s) => s.id === targetServiceId);
             if (!targetService) {
                 req.status = 'failed';
+                this.recordFailure();
                 continue;
             }
 
@@ -218,12 +292,14 @@ export class TickEngineService {
             const state = runtimeStates.get(targetServiceId);
             if (!state) {
                 req.status = 'failed';
+                this.recordFailure();
                 continue;
             }
 
             // Check queue capacity
             if (state.queue.length + state.processing.length >= targetConfig.queueSize + targetConfig.maxConcurrency) {
                 req.status = 'failed';
+                this.recordFailure();
             } else {
                 req.status = 'queued';
                 req.currentServiceId = targetServiceId;
@@ -277,6 +353,7 @@ export class TickEngineService {
                     req.travelProgress = 0;
                 } else {
                     req.status = 'completed';
+                    this.recordCompletion(req.totalLatency);
                 }
             }
         }
@@ -292,6 +369,7 @@ export class TickEngineService {
 
         this._requests.set(requests);
         this._runtimeStates.set(runtimeStates);
+        this._metricsVersion.update((v) => v + 1);
     }
 
     private spawnRequests(

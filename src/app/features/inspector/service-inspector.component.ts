@@ -1,7 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
-import { Database, Globe, LucideAngularModule, Mail, Server, Split, Trash2, X, Zap } from 'lucide-angular';
+import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Trash2, X, Zap } from 'lucide-angular';
 import { GameStateService } from '../../core/game/game-state.service';
-import { getServiceConfig } from '../../core/game/service-types.config';
+import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
+import { TickEngineService } from '../../core/game/tick-engine.service';
 
 @Component({
     selector: 'app-service-inspector',
@@ -40,24 +41,60 @@ import { getServiceConfig } from '../../core/game/service-types.config';
         <!-- Description -->
         <p class="text-xs text-slate-500 mb-3 leading-relaxed">{{ config()!.description }}</p>
 
-        <!-- Simulation params -->
-        <div class="mb-3">
-          <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Simulation</h4>
-          <div class="grid grid-cols-3 gap-1.5">
-            <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
-              <div class="text-xs font-semibold text-slate-700">{{ config()!.baseProcessingTime }}ms</div>
-              <div class="text-[9px] text-slate-400">Latency</div>
-            </div>
-            <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
-              <div class="text-xs font-semibold text-slate-700">{{ config()!.maxConcurrency }}</div>
-              <div class="text-[9px] text-slate-400">Concurrency</div>
-            </div>
-            <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
-              <div class="text-xs font-semibold text-slate-700">{{ config()!.queueSize }}</div>
-              <div class="text-[9px] text-slate-400">Queue</div>
+        <!-- Live stats (when simulation running + not Origin) -->
+        @if (showLiveStats()) {
+          <div class="mb-3">
+            <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Live</h4>
+            <div class="grid grid-cols-2 gap-1.5">
+              <div class="stat-card bg-white/50 rounded-md p-1.5">
+                <div class="text-xs font-semibold text-slate-700">
+                  {{ liveVisual()!.queueCount }}/{{ liveVisual()!.queueCapacity }}
+                </div>
+                <div class="text-[9px] text-slate-400 mb-1">Queue</div>
+                <div class="h-1 bg-black/10 rounded-full overflow-hidden">
+                  <div
+                    class="h-full rounded-full transition-all duration-200"
+                    [style.width.%]="liveVisual()!.queueRatio * 100"
+                    [style.background-color]="queueBarColor()"
+                  ></div>
+                </div>
+              </div>
+              <div class="stat-card bg-white/50 rounded-md p-1.5">
+                <div class="text-xs font-semibold text-slate-700">
+                  {{ liveVisual()!.processingCount }}/{{ liveVisual()!.maxConcurrency }}
+                </div>
+                <div class="text-[9px] text-slate-400 mb-1">Processing</div>
+                <div class="h-1 bg-black/10 rounded-full overflow-hidden">
+                  <div
+                    class="h-full rounded-full bg-blue-400 transition-all duration-200"
+                    [style.width.%]="liveVisual()!.processingRatio * 100"
+                  ></div>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
+        }
+
+        <!-- Simulation params (static config) -->
+        @if (!isOrigin()) {
+          <div class="mb-3">
+            <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Config</h4>
+            <div class="grid grid-cols-3 gap-1.5">
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-slate-700">{{ config()!.baseProcessingTime }}ms</div>
+                <div class="text-[9px] text-slate-400">Latency</div>
+              </div>
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-slate-700">{{ config()!.maxConcurrency }}</div>
+                <div class="text-[9px] text-slate-400">Concurrency</div>
+              </div>
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-slate-700">{{ config()!.queueSize }}</div>
+                <div class="text-[9px] text-slate-400">Queue</div>
+              </div>
+            </div>
+          </div>
+        }
 
         <!-- Ports -->
         <div class="mb-3">
@@ -135,12 +172,14 @@ import { getServiceConfig } from '../../core/game/service-types.config';
 export class ServiceInspectorComponent {
     // ── Injected Services ──────────────────────────────────────────────
     private readonly gameState = inject(GameStateService);
+    private readonly tickEngine = inject(TickEngineService);
 
     // ── Icon references ────────────────────────────────────────────────
     protected readonly XIcon = X;
     protected readonly Trash2Icon = Trash2;
 
     private readonly icons = {
+        cloud: Cloud,
         globe: Globe,
         server: Server,
         database: Database,
@@ -162,6 +201,20 @@ export class ServiceInspectorComponent {
         if (!cfg) return Globe;
         const iconName = cfg.icon as keyof typeof this.icons;
         return this.icons[iconName] || Globe;
+    });
+
+    protected readonly isOrigin = computed(() => {
+        return this.service()?.type === ServiceType.ORIGIN;
+    });
+
+    protected readonly liveVisual = computed(() => {
+        const s = this.service();
+        if (!s) return null;
+        return this.tickEngine.serviceVisuals().get(s.id) ?? null;
+    });
+
+    protected readonly showLiveStats = computed(() => {
+        return this.tickEngine.running() && this.liveVisual() !== null;
     });
 
     protected readonly serviceConnections = computed(() => {
@@ -199,6 +252,14 @@ export class ServiceInspectorComponent {
             default:
                 return '#9ca3af';
         }
+    }
+
+    protected queueBarColor(): string {
+        const visual = this.liveVisual();
+        if (!visual) return '#22c55e';
+        if (visual.queueRatio > 0.8) return '#ef4444';
+        if (visual.queueRatio > 0.5) return '#eab308';
+        return '#22c55e';
     }
 
     protected onClose(): void {

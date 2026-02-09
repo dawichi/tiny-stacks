@@ -36,6 +36,45 @@ interface HoverPosition {
 
       <!-- Toolbar buttons -->
       <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
+        @if (simulation.running()) {
+          <!-- Metrics chips -->
+          <div class="flex items-center gap-1 mr-0.5">
+            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
+                         text-[10px] font-medium text-slate-600 select-none">
+              {{ formatNumber(simulation.metrics().throughput) }} req/s
+            </span>
+            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
+                         text-[10px] font-medium text-slate-600 select-none">
+              {{ formatNumber(simulation.metrics().avgLatency) }}ms
+            </span>
+            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
+                         text-[10px] font-medium select-none"
+              [class.text-red-500]="simulation.metrics().totalFailed > 0"
+              [class.text-slate-600]="simulation.metrics().totalFailed === 0"
+            >
+              {{ simulation.metrics().totalFailed }} err
+            </span>
+          </div>
+          <!-- Speed controls -->
+          <div class="flex items-center gap-0.5 mr-0.5">
+            @for (s of speedOptions; track s) {
+              <button
+                class="px-1.5 py-0.5 rounded-md text-[10px] font-medium select-none
+                       transition-all duration-150 border"
+                [class.bg-slate-600]="simulation.speed() === s"
+                [class.text-white]="simulation.speed() === s"
+                [class.border-slate-600]="simulation.speed() === s"
+                [class.bg-white/60]="simulation.speed() !== s"
+                [class.text-slate-500]="simulation.speed() !== s"
+                [class.border-white/40]="simulation.speed() !== s"
+                [class.hover:bg-white/80]="simulation.speed() !== s"
+                (click)="simulation.speed.set(s)"
+              >
+                {{ s }}x
+              </button>
+            }
+          </div>
+        }
         <button
           class="w-8 h-8 rounded-full flex items-center justify-center
                  bg-white/80 backdrop-blur-md border border-white/40 shadow-md
@@ -138,6 +177,7 @@ export class GameBoardComponent {
     protected readonly simulation = inject(TickEngineService);
 
     // ── Properties ─────────────────────────────────────────────────────
+    protected readonly speedOptions = [0.5, 1, 2];
     private readonly hoverPosition = signal<HoverPosition | null>(null);
 
     // Connection drag state
@@ -378,6 +418,10 @@ export class GameBoardComponent {
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
+    }
+
+    protected formatNumber(value: number): string {
+        return Math.round(value).toString();
     }
 
     protected getServiceVisual(serviceId: string): ServiceVisualState | null {
