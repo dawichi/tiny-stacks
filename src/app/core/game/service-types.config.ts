@@ -129,7 +129,10 @@ export const SERVICE_CONFIGS: Record<ServiceType, ServiceTypeConfig> = {
         gridHeight: 1,
         color: '#A8E6CF', // Mint
         icon: 'zap',
-        ports: [{ cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.BIDIRECTIONAL }],
+        ports: [
+            { cellOffsetX: 0, cellOffsetY: 0, edge: 'west', direction: PortDirection.INPUT },
+            { cellOffsetX: 1, cellOffsetY: 0, edge: 'east', direction: PortDirection.OUTPUT },
+        ],
         baseProcessingTime: 5,
         maxConcurrency: 50,
         queueSize: 200,

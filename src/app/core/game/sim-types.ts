@@ -26,11 +26,14 @@ export interface SimRequest {
     method: RequestMethod;
     resource: string;
     status: 'traveling' | 'queued' | 'processing' | 'completed' | 'failed';
+    direction: 'forward' | 'response';
     currentServiceId: string;
+    originServiceId: string;
     connectionId: string | null;
     travelProgress: number;
     spawnedAtTick: number;
     totalLatency: number;
+    routeHistory: string[];
 }
 
 /**
@@ -49,4 +52,13 @@ export interface ServiceRuntimeState {
     queue: SimRequest[];
     processing: SimRequest[];
     processingProgress: Map<string, number>;
+}
+
+/**
+ * Cache performance statistics for a single Cache service
+ */
+export interface CacheStats {
+    hitCount: number;
+    missCount: number;
+    cachedResources: number;
 }

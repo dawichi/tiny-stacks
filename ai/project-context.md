@@ -20,8 +20,8 @@
 
 ## Project Status
 
-**Phase:** Tick-Based Simulation Engine (Phases 1-2)
-**Milestone:** Real Request Lifecycle
+**Phase:** Simulation Engine (Phase 3 complete)
+**Milestone:** Response Paths + Cache Hit/Miss
 **Last Updated:** 2026-02-09
 
 ### Current Progress
@@ -42,6 +42,9 @@
 - [x] ~~Animated request packets (visual-only, RAF loop)~~ → replaced by tick engine
 - [x] Tick-based simulation engine (60 tps, real request lifecycle)
 - [x] Origin service type (traffic source, cloud icon, 1x1)
+- [x] Response paths (packets travel back to Origin after reaching terminal services)
+- [x] Cache hit/miss mechanics (resource tracking, GET hit/miss, POST/PUT/DELETE invalidation)
+- [x] Cache stats in inspector (hit rate, hit/miss counts, cached resources)
 - [x] Save/Load with LocalStorage (auto-save via effect, auto-load on init)
 - [x] Typed StorageService wrapper for localStorage
 - [x] Service drag-to-move on the grid
@@ -136,12 +139,15 @@ undo() / redo()                // snapshot-based, max 50 entries
 
 ### Simulation System
 - `TickEngineService` — `setInterval`-based tick loop at 60 tps, replaces old decorative `SimulationService`
-- **Request lifecycle:** Origin spawns → travel along connection (300ms hop) → queue at service → process (respects `baseProcessingTime`, `maxConcurrency`) → forward via outgoing connections or complete
+- **Request lifecycle:** Origin spawns → travel along connection (300ms hop) → queue at service → process (respects `baseProcessingTime`, `maxConcurrency`) → forward via outgoing connections → response travels back to Origin
+- **Response paths:** Requests track `routeHistory` (connection IDs). At terminal services, direction flips to `'response'` and packets travel back along the same connections in reverse. Response packets skip queues at intermediate services.
+- **Cache hit/miss:** Cache services track cached resources per `resource` name. GET + cached = HIT (immediate response). GET + not cached = MISS (caches resource, forwards to downstream). POST/PUT/DELETE invalidate the cached resource. Stats (hits/misses/cached count) exposed via `ServiceVisualState.cacheStats`.
 - **Origin service:** Traffic source (10 req/s default), weighted distribution of GET/POST/PUT/DELETE
 - **Queue overflow:** requests fail when `queue + processing >= queueSize + maxConcurrency`
-- **Types:** `SimRequest`, `TrafficPattern`, `ServiceRuntimeState` in `sim-types.ts`
+- **Types:** `SimRequest` (with `direction`, `routeHistory`, `originServiceId`), `TrafficPattern`, `ServiceRuntimeState`, `CacheStats` in `sim-types.ts`
 - Color-coded by method: GET (#87CEEB), POST (#A8E6CF), PUT (#FFE5A0), DELETE (#FFCBA4)
-- Positioned via parametric cubic Bezier evaluation (`evaluateBezier(t, curve)` in `port-utils.ts`)
+- Response packets: smaller radius (4px) with white stroke ring
+- Positioned via parametric cubic Bezier evaluation (`evaluateBezier(t, curve)` in `port-utils.ts`); response packets use `1-t` for reverse direction
 
 ### Connection System
 - **Model:** `Connection { id, source: PortRef, target: PortRef }` where `PortRef { serviceId, portIndex }`
@@ -166,10 +172,10 @@ undo() / redo()                // snapshot-based, max 50 entries
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Phase 3: Cache miss/hit mechanics, response paths
-2. Phase 4: Overload visuals (pile-up, red packets), batch rendering
-3. Responsive grid (zoom/pan)
-4. Challenge mode
+1. Phase 4: Overload visuals (pile-up, red packets), batch rendering
+2. Responsive grid (zoom/pan)
+3. Challenge mode
+4. Per-connection routing filters (method filter + percentage slider)
 
 ### Future
 - Landing page with live demo scene

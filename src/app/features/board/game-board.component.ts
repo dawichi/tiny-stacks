@@ -76,6 +76,16 @@ interface HoverPosition {
           </div>
         }
         <button
+          class="px-2 py-1 rounded-lg flex items-center justify-center
+                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
+                 hover:bg-white/90 transition-all duration-200
+                 text-[10px] font-medium text-slate-500 select-none"
+          (click)="onLoadExample()"
+          aria-label="Load example setup"
+        >
+          Example
+        </button>
+        <button
           class="w-8 h-8 rounded-full flex items-center justify-center
                  bg-white/80 backdrop-blur-md border border-white/40 shadow-md
                  hover:bg-white/90 transition-all duration-200
@@ -285,8 +295,9 @@ export class GameBoardComponent {
             .map((p) => {
                 const curve = curveCache.get(p.connectionId);
                 if (!curve) return null;
-                const pos = evaluateBezier(p.progress, curve);
-                return { x: pos.x, y: pos.y, color: p.color };
+                const t = p.direction === 'response' ? 1 - p.progress : p.progress;
+                const pos = evaluateBezier(t, curve);
+                return { x: pos.x, y: pos.y, color: p.color, isResponse: p.direction === 'response' };
             })
             .filter((p) => p !== null);
     });
@@ -418,6 +429,13 @@ export class GameBoardComponent {
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
+    }
+
+    protected onLoadExample(): void {
+        if (this.simulation.running()) {
+            this.simulation.stop();
+        }
+        this.gameState.loadExampleSetup();
     }
 
     protected formatNumber(value: number): string {

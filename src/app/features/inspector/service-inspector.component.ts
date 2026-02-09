@@ -75,6 +75,33 @@ import { TickEngineService } from '../../core/game/tick-engine.service';
           </div>
         }
 
+        <!-- Cache stats (only for Cache services when sim running) -->
+        @if (showCacheStats()) {
+          <div class="mb-3">
+            <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Cache</h4>
+            <div class="grid grid-cols-3 gap-1.5">
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-emerald-600">
+                  {{ cacheHitRate() }}%
+                </div>
+                <div class="text-[9px] text-slate-400">Hit Rate</div>
+              </div>
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-slate-700">
+                  {{ cacheStats()!.hitCount }}/{{ cacheStats()!.missCount }}
+                </div>
+                <div class="text-[9px] text-slate-400">Hit/Miss</div>
+              </div>
+              <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
+                <div class="text-xs font-semibold text-slate-700">
+                  {{ cacheStats()!.cachedResources }}
+                </div>
+                <div class="text-[9px] text-slate-400">Cached</div>
+              </div>
+            </div>
+          </div>
+        }
+
         <!-- Simulation params (static config) -->
         @if (!isOrigin()) {
           <div class="mb-3">
@@ -215,6 +242,22 @@ export class ServiceInspectorComponent {
 
     protected readonly showLiveStats = computed(() => {
         return this.tickEngine.running() && this.liveVisual() !== null;
+    });
+
+    protected readonly cacheStats = computed(() => {
+        return this.liveVisual()?.cacheStats ?? null;
+    });
+
+    protected readonly showCacheStats = computed(() => {
+        return this.tickEngine.running() && this.cacheStats() !== null;
+    });
+
+    protected readonly cacheHitRate = computed(() => {
+        const stats = this.cacheStats();
+        if (!stats) return 0;
+        const total = stats.hitCount + stats.missCount;
+        if (total === 0) return 0;
+        return Math.round((stats.hitCount / total) * 100);
     });
 
     protected readonly serviceConnections = computed(() => {

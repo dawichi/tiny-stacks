@@ -2,6 +2,7 @@ import { computed, DestroyRef, Injectable, inject, signal } from '@angular/core'
 import { GameStateService } from './game-state.service';
 import { getServiceConfig, ServiceType } from './service-types.config';
 import {
+    type CacheStats,
     REQUEST_METHOD_COLORS,
     RequestMethod,
     type ServiceRuntimeState,
@@ -50,6 +51,7 @@ export interface ServiceVisualState {
     processingCount: number;
     queueCapacity: number;
     maxConcurrency: number;
+    cacheStats?: CacheStats;
 }
 
 /**
@@ -60,6 +62,7 @@ export interface Packet {
     connectionId: string;
     progress: number;
     color: string;
+    direction: 'forward' | 'response';
 }
 
 /**
@@ -95,6 +98,10 @@ export class TickEngineService {
     private _latencyWindow: number[] = [];
     private _throughputTimestamps: number[] = [];
 
+    // Cache state
+    private cacheContents = new Map<string, Set<string>>();
+    private _cacheStats = new Map<string, { hits: number; misses: number }>();
+
     // ── Computed: packets for board rendering ──────────────────────────
     readonly packets = computed<Packet[]>(() => {
         const requests = this._requests();
@@ -107,6 +114,7 @@ export class TickEngineService {
                 connectionId: r.connectionId,
                 progress: r.travelProgress,
                 color: REQUEST_METHOD_COLORS[r.method],
+                direction: r.direction,
             }));
     });
 
@@ -126,7 +134,7 @@ export class TickEngineService {
             const queueRatio = config.queueSize > 0 ? state.queue.length / config.queueSize : 0;
             const processingRatio = config.maxConcurrency > 0 ? state.processing.length / config.maxConcurrency : 0;
 
-            result.set(svc.id, {
+            const visual: ServiceVisualState = {
                 queueRatio,
                 processingRatio,
                 isOverloaded: queueRatio > 0.8,
@@ -134,7 +142,20 @@ export class TickEngineService {
                 processingCount: state.processing.length,
                 queueCapacity: config.queueSize,
                 maxConcurrency: config.maxConcurrency,
-            });
+            };
+
+            if (svc.type === ServiceType.CACHE) {
+                const stats = this._cacheStats.get(svc.id);
+                if (stats) {
+                    visual.cacheStats = {
+                        hitCount: stats.hits,
+                        missCount: stats.misses,
+                        cachedResources: this.cacheContents.get(svc.id)?.size ?? 0,
+                    };
+                }
+            }
+
+            result.set(svc.id, visual);
         }
 
         return result;
@@ -190,6 +211,8 @@ export class TickEngineService {
         }
         this._requests.set([]);
         this._runtimeStates.set(new Map());
+        this.cacheContents.clear();
+        this._cacheStats.clear();
         this.resetMetrics();
     }
 
@@ -213,6 +236,88 @@ export class TickEngineService {
 
     private recordFailure(): void {
         this._failedCount++;
+    }
+
+    // ── Private: Response Path ──────────────────────────────────────────
+    private beginResponse(req: SimRequest): void {
+        req.direction = 'response';
+        const nextConnId = req.routeHistory.pop();
+        if (!nextConnId) {
+            req.status = 'completed';
+            this.recordCompletion(req.totalLatency);
+            return;
+        }
+        req.status = 'traveling';
+        req.connectionId = nextConnId;
+        req.travelProgress = 0;
+    }
+
+    private continueResponse(req: SimRequest): void {
+        const nextConnId = req.routeHistory.pop();
+        if (!nextConnId) {
+            req.status = 'completed';
+            this.recordCompletion(req.totalLatency);
+            return;
+        }
+        req.status = 'traveling';
+        req.connectionId = nextConnId;
+        req.travelProgress = 0;
+    }
+
+    // ── Private: Cache Logic ────────────────────────────────────────────
+    private handleCacheCompletion(
+        req: SimRequest,
+        cacheServiceId: string,
+        connections: ReturnType<GameStateService['connections']>,
+    ): void {
+        if (!this.cacheContents.has(cacheServiceId)) {
+            this.cacheContents.set(cacheServiceId, new Set());
+        }
+        if (!this._cacheStats.has(cacheServiceId)) {
+            this._cacheStats.set(cacheServiceId, { hits: 0, misses: 0 });
+        }
+
+        const cached = this.cacheContents.get(cacheServiceId);
+        const stats = this._cacheStats.get(cacheServiceId);
+        if (!cached || !stats) return;
+
+        if (req.method === RequestMethod.GET) {
+            if (cached.has(req.resource)) {
+                // CACHE HIT: respond immediately
+                stats.hits++;
+                this.beginResponse(req);
+            } else {
+                // CACHE MISS: cache the resource, then forward to downstream
+                stats.misses++;
+                cached.add(req.resource);
+
+                const outgoing = connections.filter((c) => c.source.serviceId === cacheServiceId);
+                if (outgoing.length > 0) {
+                    const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                    req.status = 'traveling';
+                    req.connectionId = conn.id;
+                    req.travelProgress = 0;
+                    req.routeHistory.push(conn.id);
+                } else {
+                    // No downstream — respond with miss data
+                    this.beginResponse(req);
+                }
+            }
+        } else {
+            // POST, PUT, DELETE: invalidate cached resource, forward normally
+            cached.delete(req.resource);
+
+            const outgoing = connections.filter((c) => c.source.serviceId === cacheServiceId);
+            if (outgoing.length > 0) {
+                const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                req.status = 'traveling';
+                req.connectionId = conn.id;
+                req.travelProgress = 0;
+                req.routeHistory.push(conn.id);
+            } else {
+                this.beginResponse(req);
+            }
+        }
     }
 
     // ── Private: Tick Loop ─────────────────────────────────────────────
@@ -270,7 +375,7 @@ export class TickEngineService {
             }
         }
 
-        // 3. Deliver arrived requests to destination service queues
+        // 3. Deliver arrived requests
         const arrivedRequests = requests.filter((r) => r.status === 'traveling' && r.travelProgress >= 1);
         for (const req of arrivedRequests) {
             const conn = connections.find((c) => c.id === req.connectionId);
@@ -280,6 +385,23 @@ export class TickEngineService {
                 continue;
             }
 
+            if (req.direction === 'response') {
+                // Response packet: arrives at the source side of the connection (traveling in reverse)
+                const arrivalServiceId = conn.source.serviceId;
+                req.currentServiceId = arrivalServiceId;
+                req.connectionId = null;
+                req.travelProgress = 0;
+
+                if (arrivalServiceId === req.originServiceId) {
+                    req.status = 'completed';
+                    this.recordCompletion(req.totalLatency);
+                } else {
+                    this.continueResponse(req);
+                }
+                continue;
+            }
+
+            // Forward packet: enqueue at target service
             const targetServiceId = conn.target.serviceId;
             const targetService = services.find((s) => s.id === targetServiceId);
             if (!targetService) {
@@ -338,22 +460,30 @@ export class TickEngineService {
                 }
             }
 
-            // 5. Completed requests: forward or mark done
+            // 5. Completed requests: forward, cache logic, or begin response
             for (const req of completed) {
                 state.processing = state.processing.filter((r) => r.id !== req.id);
                 state.processingProgress.delete(req.id);
 
-                // Find outgoing connections from this service
-                const outgoing = connections.filter((c) => c.source.serviceId === svc.id);
-                if (outgoing.length > 0) {
-                    // Forward to a random outgoing connection (round-robin later)
-                    const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
-                    req.status = 'traveling';
-                    req.connectionId = conn.id;
-                    req.travelProgress = 0;
+                // Cache-specific behavior
+                if (svc.type === ServiceType.CACHE && req.direction === 'forward') {
+                    this.handleCacheCompletion(req, svc.id, connections);
+                    continue;
+                }
+
+                if (req.direction === 'forward') {
+                    const outgoing = connections.filter((c) => c.source.serviceId === svc.id);
+                    if (outgoing.length > 0) {
+                        const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                        req.status = 'traveling';
+                        req.connectionId = conn.id;
+                        req.travelProgress = 0;
+                        req.routeHistory.push(conn.id);
+                    } else {
+                        this.beginResponse(req);
+                    }
                 } else {
-                    req.status = 'completed';
-                    this.recordCompletion(req.totalLatency);
+                    this.continueResponse(req);
                 }
             }
         }
@@ -404,11 +534,14 @@ export class TickEngineService {
                     method,
                     resource,
                     status: 'traveling',
+                    direction: 'forward',
                     currentServiceId: origin.id,
+                    originServiceId: origin.id,
                     connectionId: conn.id,
                     travelProgress: 0,
                     spawnedAtTick: this.tickCount,
                     totalLatency: 0,
+                    routeHistory: [conn.id],
                 });
             }
 

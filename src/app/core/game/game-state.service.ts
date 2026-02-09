@@ -310,15 +310,28 @@ export class GameStateService {
     }
 
     /**
-     * Add demo services for initial display
+     * Load an example architecture: Origin → Gateway → REST → Cache → Database
+     * Demonstrates response paths and cache hit/miss mechanics.
      */
-    addDemoServices(): void {
-        this.addService(ServiceType.API_GATEWAY, 8, 1);
-        this.addService(ServiceType.REST_SERVICE, 5, 5);
-        this.addService(ServiceType.CACHE, 10, 5);
-        this.addService(ServiceType.DATABASE, 8, 9);
-        this.addService(ServiceType.MESSAGE_QUEUE, 2, 4);
-        this.addService(ServiceType.LOAD_BALANCER, 14, 5);
+    loadExampleSetup(): void {
+        this.clearAll();
+
+        const origin = this.addService(ServiceType.ORIGIN, 0, 6);
+        const gateway = this.addService(ServiceType.API_GATEWAY, 2, 5);
+        const rest = this.addService(ServiceType.REST_SERVICE, 6, 5);
+        const cache = this.addService(ServiceType.CACHE, 9, 6);
+        const db = this.addService(ServiceType.DATABASE, 12, 5);
+
+        if (!origin || !gateway || !rest || !cache || !db) return;
+
+        // Origin(output:0) → Gateway(input:0)
+        this.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: gateway.id, portIndex: 0 });
+        // Gateway(output:1) → REST(input:0)
+        this.addConnection({ serviceId: gateway.id, portIndex: 1 }, { serviceId: rest.id, portIndex: 0 });
+        // REST(output:1) → Cache(input:0)
+        this.addConnection({ serviceId: rest.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        // Cache(output:1) → Database(bidirectional:0)
+        this.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
     }
 
     private pushSnapshot(): void {

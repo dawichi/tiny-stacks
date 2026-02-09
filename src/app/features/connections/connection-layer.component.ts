@@ -31,8 +31,10 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
         <circle
           [attr.cx]="packet.x"
           [attr.cy]="packet.y"
-          r="5"
+          [attr.r]="packet.isResponse ? 4 : 5"
           [attr.fill]="packet.color"
+          [attr.stroke]="packet.isResponse ? 'white' : 'none'"
+          [attr.stroke-width]="packet.isResponse ? 2 : 0"
           class="packet"
         />
       }
@@ -77,7 +79,7 @@ export class ConnectionLayerComponent {
     readonly boardWidth = input.required<number>();
     readonly boardHeight = input.required<number>();
     readonly selectedConnectionId = input<string | null>(null);
-    readonly packets = input<{ x: number; y: number; color: string }[]>([]);
+    readonly packets = input<{ x: number; y: number; color: string; isResponse: boolean }[]>([]);
     readonly dragPreviewSource = input<PortRef | null>(null);
     readonly dragPreviewCursor = input<{ x: number; y: number } | null>(null);
 
