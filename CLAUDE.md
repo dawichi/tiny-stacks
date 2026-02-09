@@ -37,7 +37,8 @@ src/app/
 ├── core/
 │   ├── game/
 │   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
-│   │   ├── simulation.service.ts    # RAF packet animation engine
+│   │   ├── tick-engine.service.ts   # Tick-based simulation engine (60 tps)
+│   │   ├── sim-types.ts             # SimRequest, TrafficPattern, ServiceRuntimeState
 │   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
 │   │   └── port-utils.ts            # Port position math & Bezier curves
 │   └── storage/

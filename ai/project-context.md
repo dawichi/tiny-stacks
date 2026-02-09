@@ -20,9 +20,9 @@
 
 ## Project Status
 
-**Phase:** Core Interactions Complete
-**Milestone:** Simulation + Persistence
-**Last Updated:** 2026-02-08
+**Phase:** Tick-Based Simulation Engine (Phases 1-2)
+**Milestone:** Real Request Lifecycle
+**Last Updated:** 2026-02-09
 
 ### Current Progress
 - [x] Angular 21.1.0 initialized
@@ -39,7 +39,9 @@
 - [x] Port-to-port drag interaction (mousedown→mousemove→mouseup)
 - [x] Service inspector panel (right-side, glassmorphism)
 - [x] Connection selection + Delete key deletion
-- [x] Animated request packets (visual-only, RAF loop, color-coded by request type)
+- [x] ~~Animated request packets (visual-only, RAF loop)~~ → replaced by tick engine
+- [x] Tick-based simulation engine (60 tps, real request lifecycle)
+- [x] Origin service type (traffic source, cloud icon, 1x1)
 - [x] Save/Load with LocalStorage (auto-save via effect, auto-load on init)
 - [x] Typed StorageService wrapper for localStorage
 - [x] Service drag-to-move on the grid
@@ -87,7 +89,8 @@ src/
 │   ├── core/
 │   │   ├── game/
 │   │   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
-│   │   │   ├── simulation.service.ts    # RAF packet animation engine
+│   │   │   ├── tick-engine.service.ts   # Tick-based simulation engine (60 tps)
+│   │   │   ├── sim-types.ts             # SimRequest, TrafficPattern, ServiceRuntimeState
 │   │   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
 │   │   │   └── port-utils.ts            # Port position math & Bezier curves
 │   │   └── storage/
@@ -132,9 +135,12 @@ undo() / redo()                // snapshot-based, max 50 entries
 ```
 
 ### Simulation System
-- `SimulationService` — `requestAnimationFrame` loop, `packets` signal, `running` signal
-- Packets spawn randomly on connections (300-800ms interval), travel at 2000ms/connection
-- Color-coded by request type: GET (#87CEEB), POST (#A8E6CF), PUT (#FFE5A0), DELETE (#FFCBA4)
+- `TickEngineService` — `setInterval`-based tick loop at 60 tps, replaces old decorative `SimulationService`
+- **Request lifecycle:** Origin spawns → travel along connection (300ms hop) → queue at service → process (respects `baseProcessingTime`, `maxConcurrency`) → forward via outgoing connections or complete
+- **Origin service:** Traffic source (10 req/s default), weighted distribution of GET/POST/PUT/DELETE
+- **Queue overflow:** requests fail when `queue + processing >= queueSize + maxConcurrency`
+- **Types:** `SimRequest`, `TrafficPattern`, `ServiceRuntimeState` in `sim-types.ts`
+- Color-coded by method: GET (#87CEEB), POST (#A8E6CF), PUT (#FFE5A0), DELETE (#FFCBA4)
 - Positioned via parametric cubic Bezier evaluation (`evaluateBezier(t, curve)` in `port-utils.ts`)
 
 ### Connection System
@@ -147,6 +153,7 @@ undo() / redo()                // snapshot-based, max 50 entries
 ### Service Types
 | Type | Size | Color | Icon |
 |------|------|-------|------|
+| Origin | 1x1 | #FF8B8B (Coral) | cloud |
 | API Gateway | 3x2 | #88D8D8 (Teal) | globe |
 | REST Service | 2x2 | #87CEEB (Sky Blue) | server |
 | Database | 3x3 | #D4A5FF (Lavender) | database |
@@ -159,9 +166,10 @@ undo() / redo()                // snapshot-based, max 50 entries
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Responsive grid (zoom/pan)
-2. Cascading failure visualization
-3. Challenge mode
+1. Phase 3: Cache miss/hit mechanics, response paths
+2. Phase 4: Overload visuals (pile-up, red packets), batch rendering
+3. Responsive grid (zoom/pan)
+4. Challenge mode
 
 ### Future
 - Landing page with live demo scene
