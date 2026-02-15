@@ -1,4 +1,5 @@
 import { Injectable } from '@angular/core';
+import type { ChallengeProgress } from '../challenges/challenge.model';
 import type { Connection, PlacedService } from '../game/game-state.service';
 
 // -----------------------------------------------------
@@ -6,6 +7,7 @@ import type { Connection, PlacedService } from '../game/game-state.service';
 // -----------------------------------------------------
 export enum StorageKeys {
     GAME_STATE = 'tiny-stacks-state',
+    CHALLENGE_PROGRESS = 'tiny-stacks-challenge-progress',
 }
 
 // -----------------------------------------------------
@@ -16,6 +18,7 @@ type StorageSchema = {
         services: PlacedService[];
         connections: Connection[];
     };
+    [StorageKeys.CHALLENGE_PROGRESS]: ChallengeProgress;
 };
 
 /**

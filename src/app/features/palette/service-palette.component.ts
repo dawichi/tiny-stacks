@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal } from '@angular/core';
+import { Component, computed, inject, input, signal } from '@angular/core';
 import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Zap } from 'lucide-angular';
 import { GameStateService } from '../../core/game/game-state.service';
 import {
@@ -99,10 +99,16 @@ export class ServicePaletteComponent {
     // ── Injected Services ──────────────────────────────────────────────
     private readonly gameState = inject(GameStateService);
 
+    // ── Inputs ────────────────────────────────────────────────────────
+    readonly allowedTypes = input<ServiceType[] | null>(null);
+
     // ── Properties ─────────────────────────────────────────────────────
     protected readonly collapsed = signal(false);
 
-    protected readonly serviceTypes = computed(() => getAllServiceTypes());
+    protected readonly serviceTypes = computed(() => {
+        const allowed = this.allowedTypes();
+        return allowed ?? getAllServiceTypes();
+    });
 
     private readonly icons = {
         cloud: Cloud,

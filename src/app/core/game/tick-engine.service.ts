@@ -95,6 +95,12 @@ export class TickEngineService {
     readonly running = signal(false);
     readonly speed = signal(1);
 
+    /** Per-origin traffic pattern overrides (set by ChallengeService) */
+    readonly trafficOverrides = signal<Map<string, TrafficPattern>>(new Map());
+
+    /** Callback invoked each tick (used by ChallengeService for evaluation) */
+    onTickCallback: ((simDelta: number) => void) | null = null;
+
     private readonly _requests = signal<SimRequest[]>([]);
     private readonly _runtimeStates = signal<Map<string, ServiceRuntimeState>>(new Map());
     private readonly _metricsVersion = signal(0);
@@ -600,6 +606,9 @@ export class TickEngineService {
         this._requests.set(requests);
         this._runtimeStates.set(runtimeStates);
         this._metricsVersion.update((v) => v + 1);
+
+        // Notify challenge evaluator (if active)
+        this.onTickCallback?.(simDelta);
     }
 
     private spawnRequests(
@@ -615,7 +624,7 @@ export class TickEngineService {
             const outgoing = connections.filter((c) => c.source.serviceId === origin.id);
             if (outgoing.length === 0) continue;
 
-            const traffic = DEFAULT_TRAFFIC;
+            const traffic = this.trafficOverrides().get(origin.id) ?? DEFAULT_TRAFFIC;
             const accumulator = (this.spawnAccumulators.get(origin.id) ?? 0) + simDelta;
             const msPerRequest = 1000 / traffic.requestsPerSecond;
             let remaining = accumulator;
