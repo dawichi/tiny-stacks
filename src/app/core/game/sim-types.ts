@@ -55,6 +55,14 @@ export interface ServiceRuntimeState {
 }
 
 /**
+ * Per-connection routing filter
+ */
+export interface ConnectionFilter {
+    methods: RequestMethod[]; // empty = all methods allowed
+    weight: number; // 1-100, default 100
+}
+
+/**
  * Cache performance statistics for a single Cache service
  */
 export interface CacheStats {

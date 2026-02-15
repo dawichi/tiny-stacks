@@ -1,4 +1,5 @@
 import { computed, DestroyRef, Injectable, inject, signal } from '@angular/core';
+import type { Connection } from './game-state.service';
 import { GameStateService } from './game-state.service';
 import { getServiceConfig, ServiceType } from './service-types.config';
 import {
@@ -364,14 +365,13 @@ export class TickEngineService {
                 cached.add(req.resource);
 
                 const outgoing = connections.filter((c) => c.source.serviceId === cacheServiceId);
-                if (outgoing.length > 0) {
-                    const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                const conn = this.pickConnection(outgoing, req.method);
+                if (conn) {
                     req.status = 'traveling';
                     req.connectionId = conn.id;
                     req.travelProgress = 0;
                     req.routeHistory.push(conn.id);
                 } else {
-                    // No downstream — respond with miss data
                     this.beginResponse(req);
                 }
             }
@@ -380,8 +380,8 @@ export class TickEngineService {
             cached.delete(req.resource);
 
             const outgoing = connections.filter((c) => c.source.serviceId === cacheServiceId);
-            if (outgoing.length > 0) {
-                const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+            const conn = this.pickConnection(outgoing, req.method);
+            if (conn) {
                 req.status = 'traveling';
                 req.connectionId = conn.id;
                 req.travelProgress = 0;
@@ -390,6 +390,23 @@ export class TickEngineService {
                 this.beginResponse(req);
             }
         }
+    }
+
+    // ── Private: Filter-Aware Routing ──────────────────────────────────
+    private pickConnection(outgoing: Connection[], method: RequestMethod): Connection | null {
+        const eligible = outgoing.filter((c) => {
+            if (!c.filter || c.filter.methods.length === 0) return true;
+            return c.filter.methods.includes(method);
+        });
+        if (eligible.length === 0) return null;
+
+        const totalWeight = eligible.reduce((sum, c) => sum + (c.filter?.weight ?? 100), 0);
+        let roll = Math.random() * totalWeight;
+        for (const conn of eligible) {
+            roll -= conn.filter?.weight ?? 100;
+            if (roll <= 0) return conn;
+        }
+        return eligible[eligible.length - 1];
     }
 
     // ── Private: Tick Loop ─────────────────────────────────────────────
@@ -545,12 +562,16 @@ export class TickEngineService {
 
                 if (req.direction === 'forward') {
                     const outgoing = connections.filter((c) => c.source.serviceId === svc.id);
-                    if (outgoing.length > 0) {
-                        const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                    const conn = this.pickConnection(outgoing, req.method);
+                    if (conn) {
                         req.status = 'traveling';
                         req.connectionId = conn.id;
                         req.travelProgress = 0;
                         req.routeHistory.push(conn.id);
+                    } else if (outgoing.length > 0) {
+                        // Connections exist but none match this method → fail
+                        req.status = 'failed';
+                        this.recordFailure(svc.id);
                     } else {
                         this.beginResponse(req);
                     }
@@ -605,8 +626,9 @@ export class TickEngineService {
                 // Pick method/resource from weighted distribution
                 const { method, resource } = this.pickFromDistribution(traffic);
 
-                // Pick a random outgoing connection
-                const conn = outgoing[Math.floor(Math.random() * outgoing.length)];
+                // Pick outgoing connection based on method filter + weight
+                const conn = this.pickConnection(outgoing, method);
+                if (!conn) continue;
 
                 requests.push({
                     id: `req_${this.requestCounter++}`,

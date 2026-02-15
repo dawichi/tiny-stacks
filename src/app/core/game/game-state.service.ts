@@ -1,6 +1,7 @@
 import { computed, effect, Injectable, inject, signal } from '@angular/core';
 import { StorageKeys, StorageService } from '../storage/storage.service';
 import { getServiceConfig, PortDirection, ServiceType } from './service-types.config';
+import type { ConnectionFilter } from './sim-types';
 
 const MAX_UNDO_STACK = 50;
 
@@ -38,6 +39,7 @@ export interface Connection {
     id: string;
     source: PortRef;
     target: PortRef;
+    filter?: ConnectionFilter;
 }
 
 /**
@@ -215,6 +217,14 @@ export class GameStateService {
 
         this.connections.update((conns) => [...conns, connection]);
         return connection;
+    }
+
+    /**
+     * Update a connection's routing filter
+     */
+    updateConnectionFilter(id: string, filter: ConnectionFilter): void {
+        this.pushSnapshot();
+        this.connections.update((conns) => conns.map((c) => (c.id === id ? { ...c, filter } : c)));
     }
 
     /**
