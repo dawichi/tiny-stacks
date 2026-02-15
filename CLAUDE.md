@@ -35,21 +35,31 @@ Package manager is **Bun** — use `bun install`, not npm/yarn.
 ```
 src/app/
 ├── core/
+│   ├── challenges/
+│   │   ├── challenge.model.ts          # Pure types (ChallengeDefinition, WinCondition, etc.)
+│   │   ├── challenge-definitions.ts    # Challenge levels (pure data, JSON-serializable)
+│   │   └── challenge.service.ts        # Runtime: load, evaluate, persist progress
 │   ├── game/
-│   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
-│   │   ├── tick-engine.service.ts   # Tick-based simulation engine (60 tps)
-│   │   ├── sim-types.ts             # SimRequest, TrafficPattern, ServiceRuntimeState
-│   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
-│   │   └── port-utils.ts            # Port position math & Bezier curves
+│   │   ├── game-state.service.ts       # State (Signals) + undo/redo + persistence
+│   │   ├── tick-engine.service.ts      # Tick-based simulation engine (60 tps)
+│   │   ├── sim-types.ts                # SimRequest, TrafficPattern, ConnectionFilter
+│   │   ├── service-types.config.ts     # Service definitions (types, sizes, colors, ports)
+│   │   └── port-utils.ts              # Port position math & Bezier curves
 │   └── storage/
-│       └── storage.service.ts       # Typed localStorage wrapper
+│       └── storage.service.ts          # Typed localStorage wrapper
 ├── features/
-│   ├── board/game-board.component.ts       # Board + drag-drop + toolbar (undo/redo, play/pause)
+│   ├── board/game-board.component.ts          # Board + drag-drop + toolbar
+│   ├── challenges/
+│   │   ├── challenges-page.component.ts       # Level selection grid
+│   │   └── challenge-page.component.ts        # Individual challenge play view
 │   ├── connections/connection-layer.component.ts  # SVG Bezier paths + packets
-│   ├── inspector/service-inspector.component.ts   # Right-side detail panel
-│   ├── palette/service-palette.component.ts       # Bottom-left service palette
-│   └── services/service.component.ts              # Service tile + ports + drag-to-move
-└── app.ts                                         # Root component
+│   ├── home/home-page.component.ts            # Mode selection (Sandbox/Challenges)
+│   ├── inspector/service-inspector.component.ts   # Service + connection inspector
+│   ├── palette/service-palette.component.ts       # Service palette (filterable)
+│   ├── sandbox/sandbox-page.component.ts      # Sandbox mode wrapper
+│   └── services/service.component.ts          # Service tile + ports + drag-to-move
+├── app.routes.ts                              # Routes: /, /sandbox, /challenges, /challenges/:id
+└── app.ts                                     # Root: router-outlet
 ```
 
 ### State Management

@@ -10,9 +10,9 @@
 
 **Core Loop:** Place → Connect → Watch → Optimize → Iterate
 
-**Game Modes (planned):**
-- **Sandbox** — unlimited creative building
-- **Challenges** — specific goals with 3-star rating (e.g. "handle 100 req/s", "fix a broken system in <30s")
+**Game Modes:**
+- **Sandbox** (`/sandbox`) — unlimited creative building
+- **Challenges** (`/challenges`) — progressive puzzles with 3-star rating, declarative win conditions
 
 **Simulation design**: See `ai/simulation-design.md` for the full design of the tick-based simulation engine, service behaviors, request lifecycle, and challenge system.
 
@@ -20,8 +20,8 @@
 
 ## Project Status
 
-**Phase:** Simulation Engine (Phase 3 complete)
-**Milestone:** Response Paths + Cache Hit/Miss
+**Phase:** Challenge System (Phase 6 in progress)
+**Milestone:** 3 playable challenge levels
 **Last Updated:** 2026-02-09
 
 ### Current Progress
@@ -51,6 +51,15 @@
 - [x] Typed StorageService wrapper for localStorage
 - [x] Service drag-to-move on the grid
 - [x] Undo/Redo system (Ctrl+Z / Ctrl+Shift+Z, toolbar buttons, snapshot-based)
+- [x] Per-connection routing filters (method toggles + weight slider)
+- [x] Connection inspector panel (click connection → filter UI)
+- [x] Homepage with Sandbox/Challenges mode selection
+- [x] Angular Router (/, /sandbox, /challenges, /challenges/:id)
+- [x] Modular challenge system (data-driven, JSON-serializable definitions)
+- [x] 3 playable challenge levels (Hello Backend, Cache It, Scale Out)
+- [x] Declarative win conditions with sustain tracking + 3-star rating
+- [x] Challenge progress persistence (localStorage)
+- [x] Challenge UI: briefing overlay, star HUD, victory screen with per-star details
 
 ---
 
@@ -92,26 +101,38 @@ bun run check:fix   # Fix all auto-fixable issues
 src/
 ├── app/
 │   ├── core/
+│   │   ├── challenges/
+│   │   │   ├── challenge.model.ts          # Pure types (ChallengeDefinition, WinCondition, etc.)
+│   │   │   ├── challenge-definitions.ts    # 3 challenge levels (pure data, JSON-serializable)
+│   │   │   └── challenge.service.ts        # Runtime: load, evaluate, persist progress
 │   │   ├── game/
-│   │   │   ├── game-state.service.ts    # State (Signals) + undo/redo + persistence
-│   │   │   ├── tick-engine.service.ts   # Tick-based simulation engine (60 tps)
-│   │   │   ├── sim-types.ts             # SimRequest, TrafficPattern, ServiceRuntimeState
-│   │   │   ├── service-types.config.ts  # Service definitions (types, sizes, colors, ports)
-│   │   │   └── port-utils.ts            # Port position math & Bezier curves
+│   │   │   ├── game-state.service.ts       # State (Signals) + undo/redo + persistence
+│   │   │   ├── tick-engine.service.ts      # Tick-based simulation engine (60 tps)
+│   │   │   ├── sim-types.ts                # SimRequest, TrafficPattern, ConnectionFilter
+│   │   │   ├── service-types.config.ts     # Service definitions (types, sizes, colors, ports)
+│   │   │   └── port-utils.ts               # Port position math & Bezier curves
 │   │   └── storage/
-│   │       └── storage.service.ts       # Typed localStorage wrapper
+│   │       └── storage.service.ts          # Typed localStorage wrapper
 │   ├── features/
 │   │   ├── board/
-│   │   │   └── game-board.component.ts  # Board + drag-drop + connections + packets + toolbar
+│   │   │   └── game-board.component.ts     # Board + drag-drop + connections + packets + toolbar
+│   │   ├── challenges/
+│   │   │   ├── challenges-page.component.ts  # Level selection grid
+│   │   │   └── challenge-page.component.ts   # Individual challenge play view
 │   │   ├── connections/
 │   │   │   └── connection-layer.component.ts  # SVG Bezier paths + packets
+│   │   ├── home/
+│   │   │   └── home-page.component.ts      # Mode selection (Sandbox/Challenges)
 │   │   ├── inspector/
-│   │   │   └── service-inspector.component.ts # Right-side detail panel
+│   │   │   └── service-inspector.component.ts # Service + connection inspector panels
 │   │   ├── palette/
-│   │   │   └── service-palette.component.ts   # Bottom-left service palette
+│   │   │   └── service-palette.component.ts   # Service palette (supports allowedTypes filter)
+│   │   ├── sandbox/
+│   │   │   └── sandbox-page.component.ts   # Sandbox mode wrapper
 │   │   └── services/
-│   │       └── service.component.ts     # Service tile + port interaction + drag-to-move
-│   └── app.ts (root component)
+│   │       └── service.component.ts        # Service tile + port interaction + drag-to-move
+│   ├── app.routes.ts                       # Routes: /, /sandbox, /challenges, /challenges/:id
+│   └── app.ts                              # Root: router-outlet only
 ├── styles.scss (TailwindCSS + CSS variables)
 └── ai/
     └── project-context.md (this file)
@@ -152,11 +173,24 @@ undo() / redo()                // snapshot-based, max 50 entries
 - Positioned via parametric cubic Bezier evaluation (`evaluateBezier(t, curve)` in `port-utils.ts`); response packets use `1-t` for reverse direction
 
 ### Connection System
-- **Model:** `Connection { id, source: PortRef, target: PortRef }` where `PortRef { serviceId, portIndex }`
+- **Model:** `Connection { id, source: PortRef, target: PortRef, filter?: ConnectionFilter }` where `PortRef { serviceId, portIndex }`
+- **Routing filters:** Per-connection method toggles (GET/POST/PUT/DELETE) + weight slider (1-100). Evaluated via `pickConnection()` in tick engine.
 - **Rendering:** SVG Bezier curves via `ConnectionLayerComponent`, layered between grid and services
 - **Interaction:** mousedown on port → mousemove shows dashed preview → mouseup on target port creates connection
 - **Validation:** OUTPUT/BIDIRECTIONAL → INPUT/BIDIRECTIONAL only, no self-connections, no duplicates
+- **Inspector:** Click a connection → shows filter UI (method toggles + weight slider + delete)
 - **Utilities:** `port-utils.ts` provides `getPortAbsolutePosition()`, `computeBezierPath()`, `computePreviewPath()`
+
+### Challenge System
+- **Data-driven:** Challenge definitions are pure JSON-serializable objects (no code) in `challenge-definitions.ts`
+- **Model:** `ChallengeDefinition { services, connections, traffic, availableServiceTypes, stars: [StarTier x3] }`
+- **Win conditions:** Declarative `{ metric, operator, value, sustainMs, label }` — evaluated each tick by `ChallengeService`
+- **Metrics:** throughput, errorRate, avgLatency, totalCompleted, serviceCount
+- **Sustain tracking:** Conditions must hold true for `sustainMs` continuously (resets on failure)
+- **Progress:** Stars earned persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
+- **Unlocking:** Level N+1 unlocked when level N has >= 1 star
+- **Traffic overrides:** `TickEngineService.trafficOverrides` signal allows per-origin traffic patterns
+- **3 levels:** Hello Backend (REST+DB), Cache It (add cache to overloaded DB), Scale Out (LB + horizontal scaling)
 
 ### Service Types
 | Type | Size | Color | Icon |
@@ -174,20 +208,19 @@ undo() / redo()                // snapshot-based, max 50 entries
 ## Todo List
 
 ### Immediate (Next Steps)
-1. Phase 4: Overload visuals (pile-up, red packets), batch rendering
-2. Responsive grid (zoom/pan)
-3. Challenge mode
-4. Per-connection routing filters (method filter + percentage slider)
+1. More challenge levels (levels 4-6: Message Queue, API Gateway, Full Stack)
+2. Service configuration editing (processing time, queue size per service)
+3. Responsive grid (zoom/pan)
+4. Batch rendering at high throughput (one ball = N requests)
+5. Custom challenge builder (create/modify/export challenge definitions)
 
 ### Future
 - Landing page with live demo scene
-- Challenge mode with star ratings
 - Cascading failure visualization (domino effect)
-- Metrics dashboard (throughput, latency, error rate)
-- Service configuration editing (processing time, queue size)
-- Import/export layouts
+- Import/export layouts (sandbox)
 - Ambient audio (muted by default)
 - Service upgrades (Basic → Pro → Enterprise)
+- Locked services visual indicator (lock icon on pre-placed challenge services)
 
 ---
 
