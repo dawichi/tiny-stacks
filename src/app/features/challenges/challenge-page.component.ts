@@ -29,8 +29,7 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
             <lucide-icon
               [img]="StarIcon"
               [size]="22"
-              [class]="star ? 'text-amber-400' : 'text-slate-300'"
-              [style.filter]="star ? 'drop-shadow(0 0 4px rgba(251, 191, 36, 0.5))' : 'none'"
+              [class]="star ? 'star-filled text-amber-400' : 'text-slate-300'"
             />
           }
         </div>
@@ -59,11 +58,15 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
             <!-- Goals -->
             <div class="mb-6">
               <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Goals</h3>
-              <div class="flex flex-col gap-1.5">
+              <div class="flex flex-col gap-2">
                 @for (star of challenge()?.stars ?? []; track $index) {
-                  <div class="flex items-center gap-2 text-sm text-slate-600">
-                    <lucide-icon [img]="StarIcon" [size]="14" class="text-slate-300 shrink-0" />
-                    <span>{{ star.conditions[0]?.label }}</span>
+                  <div class="flex items-start gap-2 text-sm text-slate-600">
+                    <lucide-icon [img]="StarIcon" [size]="14" class="text-slate-300 shrink-0 mt-0.5" />
+                    <div class="flex flex-col gap-0.5">
+                      @for (cond of star.conditions; track $index) {
+                        <span>{{ cond.label }}</span>
+                      }
+                    </div>
                   </div>
                 }
               </div>
@@ -84,23 +87,28 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
       <!-- Victory overlay -->
       @if (showVictory()) {
         <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4 text-center">
-            <h2 class="text-2xl font-bold text-slate-800 mb-4">Challenge Complete!</h2>
+          <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4">
+            <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">Challenge Complete!</h2>
 
-            <div class="flex justify-center gap-3 mb-6">
-              @for (star of starStatus(); track $index) {
-                <lucide-icon
-                  [img]="StarIcon"
-                  [size]="36"
-                  [class]="star ? 'text-amber-400' : 'text-slate-300'"
-                  [style.filter]="star ? 'drop-shadow(0 0 6px rgba(251, 191, 36, 0.6))' : 'none'"
-                />
+            <!-- Star details -->
+            <div class="flex flex-col gap-3 mb-6">
+              @for (star of starDetails(); track $index) {
+                <div class="flex items-start gap-3 p-3 rounded-lg" [class]="star.earned ? 'bg-amber-50/80' : 'bg-slate-50/80'">
+                  <lucide-icon
+                    [img]="StarIcon"
+                    [size]="20"
+                    [class]="star.earned ? 'star-filled text-amber-400 shrink-0 mt-0.5' : 'text-slate-300 shrink-0 mt-0.5'"
+                  />
+                  <div class="flex flex-col gap-0.5">
+                    @for (cond of star.conditions; track $index) {
+                      <span class="text-sm" [class]="star.earned ? 'text-slate-700' : 'text-slate-400'">
+                        {{ cond }}
+                      </span>
+                    }
+                  </div>
+                </div>
               }
             </div>
-
-            <p class="text-sm text-slate-500 mb-6">
-              {{ starsEarned() }} / 3 stars earned
-            </p>
 
             <div class="flex gap-3">
               <button
@@ -140,6 +148,10 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
     :host {
       display: block;
     }
+    .star-filled ::ng-deep svg {
+      fill: currentColor;
+      filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
+    }
   `,
     ],
 })
@@ -177,6 +189,16 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
         const minutes = Math.floor(seconds / 60);
         const secs = seconds % 60;
         return `${minutes}:${secs.toString().padStart(2, '0')}`;
+    });
+
+    protected readonly starDetails = computed(() => {
+        const ch = this.challenge();
+        const status = this.starStatus();
+        if (!ch) return [];
+        return ch.stars.map((star, i) => ({
+            earned: status[i],
+            conditions: star.conditions.map((c) => c.label),
+        }));
     });
 
     protected readonly hasNextLevel = computed(() => {

@@ -19,22 +19,25 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-1',
         name: 'Hello, Backend',
-        description: 'Connect a REST service to a Database and handle basic traffic.',
+        description: 'Build a proper backend: connect Origin → REST → Database.',
         briefing:
-            'Your first architecture! An Origin is sending 10 requests per second. ' +
-            'Place a REST Service and a Database, then connect them to handle the traffic. ' +
-            'Make sure requests can flow from Origin all the way to the Database and back.',
+            'Your first architecture! An Origin is sending 25 requests per second. ' +
+            'You need to build a proper backend pipeline: place a REST Service to handle ' +
+            'business logic, and a Database for persistent storage. Connect them in order: ' +
+            'Origin → REST Service → Database. The REST Service processes requests faster ' +
+            'than the Database, so it acts as your front-line handler.',
         services: [{ type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true }],
         connections: [],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 10,
+                    requestsPerSecond: 25,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'users', weight: 60 },
+                        { method: RequestMethod.GET, resource: 'users', weight: 50 },
                         { method: RequestMethod.GET, resource: 'products', weight: 25 },
                         { method: RequestMethod.POST, resource: 'users', weight: 15 },
+                        { method: RequestMethod.PUT, resource: 'products', weight: 10 },
                     ],
                 },
             },
@@ -46,9 +49,9 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                     {
                         metric: 'throughput',
                         operator: '>=',
-                        value: 5,
+                        value: 15,
                         sustainMs: 10000,
-                        label: 'Handle 5 req/s for 10s',
+                        label: 'Handle 15 req/s for 10s',
                     },
                 ],
             },
@@ -57,15 +60,22 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                     {
                         metric: 'avgLatency',
                         operator: '<=',
-                        value: 500,
+                        value: 400,
                         sustainMs: 10000,
-                        label: 'Avg latency ≤ 500ms for 10s',
+                        label: 'Avg latency ≤ 400ms for 10s',
                     },
                 ],
             },
             {
                 conditions: [
                     { metric: 'errorRate', operator: '<=', value: 0, sustainMs: 15000, label: 'Zero errors for 15s' },
+                    {
+                        metric: 'serviceCount',
+                        operator: '>=',
+                        value: 3,
+                        sustainMs: 0,
+                        label: 'Use both REST + Database',
+                    },
                 ],
             },
         ],
