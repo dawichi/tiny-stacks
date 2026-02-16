@@ -22,14 +22,15 @@ bun run check:fix     # Biome lint + format auto-fix
 
 Package manager is **Bun** — use `bun install`, not npm/yarn.
 
-## Architecture
+## Tech Stack
 
-### Tech Stack
 - **Angular 21** (Signals, standalone components, new control flow syntax)
 - **TailwindCSS v4** (PostCSS-based)
 - **Lucide Angular** for SVG icons
 - **Biome** for linting/formatting (replaces ESLint + Prettier)
 - **Vitest** for testing
+
+## Architecture
 
 ### Source Structure
 ```
@@ -70,35 +71,7 @@ Pure DOM-based — no canvas or WebGL. Game board uses CSS background gradients 
 
 ## Code Conventions
 
-**Always read `.cursor/rules/conventions/*` files before making code changes.**
-
-### Angular Patterns
-- **All components must be standalone** (`standalone: true`)
-- **Use `inject()` function**, not constructor injection
-- **Use new control flow**: `@if`, `@for`, `@switch` — never `*ngIf`/`*ngFor`
-- **Use Angular Signals** for reactive state (`signal()`, `computed()`)
-- **Explicit visibility modifiers on all properties**: `private` (default) → `protected` (template access) → `public` (rare)
-
-### Component Structure
-Organize component classes with section separators:
-```
-Injected Services → Inputs → Outputs → Properties → Lifecycle → Public Methods → Private Methods
-```
-
-### Naming
-- **File names**: kebab-case (`game-board.component.ts`)
-- **Classes**: PascalCase (`GameBoardComponent`)
-- **Selectors**: `app-` prefix, kebab-case (`app-game-board`)
-- **Component type before specificity**: `card-user` not `user-card`
-
-### TypeScript
-- Strict mode enabled — avoid `any` (add `TODO` comment if unavoidable)
-- Inline styles use SCSS (configured in `angular.json`)
-
-### Biome Formatting Rules
-- 4-space indent, 120-char line width
-- Single quotes, trailing commas, semicolons always
-- HTML files excluded from Biome (handled by Angular)
+**Always read `.cursor/rules/conventions/*` files before making code changes.** All Angular patterns, component structure, naming, and TypeScript rules are defined there.
 
 ## Workflow Requirements
 
