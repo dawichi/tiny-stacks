@@ -56,7 +56,7 @@ src/app/
 │   ├── connections/connection-layer.component.ts  # SVG Bezier paths + packets
 │   ├── home/home-page.component.ts            # Mode selection (Sandbox/Challenges)
 │   ├── inspector/service-inspector.component.ts   # Service + connection inspector
-│   ├── palette/service-palette.component.ts       # Service palette (filterable)
+│   ├── palette/service-palette.component.ts       # Service palette (availableResources filter + count limits)
 │   ├── sandbox/sandbox-page.component.ts      # Sandbox mode wrapper
 │   └── services/service.component.ts          # Service tile + ports + drag-to-move
 ├── app.routes.ts                              # Routes: /, /sandbox, /challenges, /challenges/:id
@@ -85,6 +85,16 @@ Pure DOM-based — no canvas or WebGL. Game board uses CSS background gradients 
 2. **After significant changes**: Run `bun run check` to confirm lint + format pass
 3. **Before committing**: Present a summary of changed files with short descriptions and get approval
 4. **Update `ai/project-context.md`** when making significant architectural changes
+
+## Periodic Maintenance
+
+Do these at the end of a long session or every ~10 commits:
+
+1. **Docs audit** — check `ai/project-context.md`, `CLAUDE.md`, and `.cursor/rules/conventions/*` for stale references (renamed APIs, removed fields, outdated descriptions). Update anything that no longer matches the code.
+
+2. **Component size review** — run `wc -l src/app/**/*.ts` and `wc -l src/app/**/*.html`. Flag any `.ts` file over ~400 lines (too much logic) or `.html` file over ~200 lines (too much UI in one component). Consider extracting sub-components or splitting responsibilities.
+
+3. **Shared code extraction** — look for copy-pasted helpers, types, or logic across files. Common candidates: test helpers in spec files, repeated template blocks, utility functions. Extract to shared files so future work can reuse them.
 
 ## Key References
 - `ai/project-context.md` — current project status, todo list, and architectural notes

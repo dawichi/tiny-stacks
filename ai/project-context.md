@@ -22,7 +22,7 @@
 
 **Phase:** Challenge System (Phase 6 in progress)
 **Milestone:** 3 playable challenge levels
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-05-20
 
 ### Current Progress
 - [x] Angular 21.1.0 initialized
@@ -58,8 +58,12 @@
 - [x] Modular challenge system (data-driven, JSON-serializable definitions)
 - [x] 3 playable challenge levels (Hello Backend, Cache It, Scale Out)
 - [x] Declarative win conditions with sustain tracking + 3-star rating
+- [x] `pathExists` metric for graph traversal win conditions (correct topology enforcement)
+- [x] Per-type service placement limits (`availableResources: { type, count }[]`) enforced by palette
 - [x] Challenge progress persistence (localStorage)
-- [x] Challenge UI: briefing overlay, star HUD, victory screen with per-star details
+- [x] Challenge UI: briefing overlay, persistent objectives panel, star toasts (non-blocking), victory/results screen
+- [x] "Keep Building" action — close results and continue without retry
+- [x] Vitest integration tests for challenge evaluation (`challenge-level1.spec.ts`)
 
 ---
 
@@ -183,14 +187,15 @@ undo() / redo()                // snapshot-based, max 50 entries
 
 ### Challenge System
 - **Data-driven:** Challenge definitions are pure JSON-serializable objects (no code) in `challenge-definitions.ts`
-- **Model:** `ChallengeDefinition { services, connections, traffic, availableServiceTypes, stars: [StarTier x3] }`
-- **Win conditions:** Declarative `{ metric, operator, value, sustainMs, label }` — evaluated each tick by `ChallengeService`
-- **Metrics:** throughput, errorRate, avgLatency, totalCompleted, serviceCount
+- **Model:** `ChallengeDefinition { services, connections, traffic, availableResources: { type, count }[], stars: [StarTier x3] }`
+- **Win conditions:** Declarative `{ metric, operator, value, sustainMs, label, path? }` — evaluated each tick by `ChallengeService`
+- **Metrics:** `throughput`, `errorRate`, `avgLatency`, `totalCompleted`, `serviceCount`, `pathExists` (DFS over connection graph, requires `path: ServiceType[]`)
 - **Sustain tracking:** Conditions must hold true for `sustainMs` continuously (resets on failure)
 - **Progress:** Stars earned persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
 - **Unlocking:** Level N+1 unlocked when level N has >= 1 star
 - **Traffic overrides:** `TickEngineService.trafficOverrides` signal allows per-origin traffic patterns
 - **3 levels:** Hello Backend (REST+DB), Cache It (add cache to overloaded DB), Scale Out (LB + horizontal scaling)
+- **Testing:** `TickEngineService.tickOnce(simDeltaMs)` drives simulation synchronously in tests; `challenge-level1.spec.ts` has full integration coverage; reusable helpers (`runTicks`, `mustFind`, `mustPlace`) live alongside spec files
 
 ### Service Types
 | Type | Size | Color | Icon |

@@ -1,0 +1,204 @@
+<main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8 relative">
+  <!-- HUD -->
+  <header class="max-w-4xl mx-auto mb-6 flex items-center gap-4">
+    <a routerLink="/challenges" class="text-slate-400 hover:text-slate-600 transition-colors" (click)="onBack()">
+      <lucide-icon [img]="ArrowLeftIcon" [size]="20" />
+    </a>
+    <div class="flex-1">
+      <h1 class="text-xl font-bold text-slate-800">{{ challenge()?.name }}</h1>
+      <p class="text-xs text-slate-500">{{ challenge()?.description }}</p>
+    </div>
+
+    <!-- Stars -->
+    <div class="flex gap-1.5">
+      @for (star of starStatus(); track $index) {
+        <lucide-icon
+          [img]="StarIcon"
+          [size]="22"
+          [class]="star ? 'star-filled text-amber-400' : 'text-slate-300'"
+        />
+      }
+    </div>
+
+    <!-- Timer -->
+    <div class="text-sm font-mono text-slate-600 min-w-16 text-right">
+      {{ formattedTime() }}
+    </div>
+  </header>
+
+  <!-- Board -->
+  <div class="flex justify-center">
+    <app-game-board />
+  </div>
+
+  <app-service-palette [availableResources]="allowedResources()" />
+  <app-service-inspector />
+
+  <!-- Objectives panel -->
+  @if (!showBriefing() && challenge()) {
+    <div class="fixed top-6 left-6 z-50 bg-white/70 backdrop-blur-md border border-white/40
+                rounded-xl shadow-xl p-4 w-64">
+      <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+        Objectives
+      </h3>
+      <div class="flex flex-col gap-2.5">
+        @for (star of starDetails(); track $index) {
+          <div class="flex items-start gap-2">
+            <lucide-icon
+              [img]="StarIcon"
+              [size]="14"
+              class="shrink-0 mt-0.5"
+              [class]="star.earned ? 'star-filled text-amber-400' : 'text-slate-300'"
+            />
+            <div class="flex flex-col gap-0.5">
+              @for (cond of star.conditions; track $index) {
+                <span class="text-xs leading-snug"
+                  [class]="star.earned ? 'text-slate-400 line-through' : 'text-slate-600'"
+                >{{ cond }}</span>
+              }
+            </div>
+          </div>
+        }
+      </div>
+
+      @if (starsEarned() > 0 && hasNextLevel()) {
+        <button
+          class="mt-4 w-full py-2 rounded-lg text-xs font-semibold
+                 bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+          (click)="onNextLevel()"
+        >
+          Next Level →
+        </button>
+      }
+    </div>
+  }
+
+  <!-- Star toasts -->
+  <div class="fixed bottom-6 right-72 z-[90] flex flex-col gap-2 items-end pointer-events-none">
+    @for (toast of starToasts(); track toast.id) {
+      <div class="pointer-events-auto flex items-center gap-3 px-4 py-3
+                  bg-white/90 backdrop-blur-md border border-amber-200/60
+                  rounded-xl shadow-xl text-sm toast-in">
+        <lucide-icon [img]="StarIcon" [size]="16" class="star-filled text-amber-400 shrink-0" />
+        <span class="font-medium text-slate-700">{{ ordinal(toast.starIndex) }} star earned!</span>
+        <button
+          class="text-blue-500 hover:text-blue-700 font-semibold transition-colors"
+          (click)="onViewResults()"
+        >
+          View Results →
+        </button>
+        <button
+          class="text-slate-400 hover:text-slate-600 transition-colors"
+          (click)="dismissToast(toast.id)"
+        >
+          <lucide-icon [img]="XIcon" [size]="14" />
+        </button>
+      </div>
+    }
+  </div>
+
+  <!-- Briefing overlay -->
+  @if (showBriefing()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4">
+        <h2 class="text-2xl font-bold text-slate-800 mb-2">{{ challenge()?.name }}</h2>
+        <p class="text-sm text-slate-600 leading-relaxed mb-6">{{ challenge()?.briefing }}</p>
+
+        <!-- Goals -->
+        <div class="mb-6">
+          <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Goals</h3>
+          <div class="flex flex-col gap-2">
+            @for (star of challenge()?.stars ?? []; track $index) {
+              <div class="flex items-start gap-2 text-sm text-slate-600">
+                <lucide-icon [img]="StarIcon" [size]="14" class="text-slate-300 shrink-0 mt-0.5" />
+                <div class="flex flex-col gap-0.5">
+                  @for (cond of star.conditions; track $index) {
+                    <span>{{ cond.label }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <button
+          class="w-full flex items-center justify-center gap-2 py-3 rounded-xl text-sm font-semibold
+                 bg-blue-500 text-white hover:bg-blue-600 transition-colors shadow-lg"
+          (click)="onStart()"
+        >
+          <lucide-icon [img]="PlayIcon" [size]="16" />
+          Start Challenge
+        </button>
+      </div>
+    </div>
+  }
+
+  <!-- Results overlay -->
+  @if (showVictory()) {
+    <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
+      <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4">
+        <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">
+          {{ starsEarned() === 3 ? 'Challenge Complete!' : 'Results' }}
+        </h2>
+
+        <!-- Star details -->
+        <div class="flex flex-col gap-3 mb-6">
+          @for (star of starDetails(); track $index) {
+            <div class="flex items-start gap-3 p-3 rounded-lg" [class]="star.earned ? 'bg-amber-50/80' : 'bg-slate-50/80'">
+              <lucide-icon
+                [img]="StarIcon"
+                [size]="20"
+                [class]="star.earned ? 'star-filled text-amber-400 shrink-0 mt-0.5' : 'text-slate-300 shrink-0 mt-0.5'"
+              />
+              <div class="flex flex-col gap-0.5">
+                @for (cond of star.conditions; track $index) {
+                  <span class="text-sm" [class]="star.earned ? 'text-slate-700' : 'text-slate-400'">
+                    {{ cond }}
+                  </span>
+                }
+              </div>
+            </div>
+          }
+        </div>
+
+        <div class="flex gap-3">
+          @if (starsEarned() < 3) {
+            <button
+              class="flex-1 py-2.5 rounded-xl text-sm font-semibold
+                     bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              (click)="onContinue()"
+            >
+              Keep Building
+            </button>
+          }
+          <button
+            class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium
+                   bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
+            (click)="onRetry()"
+          >
+            <lucide-icon [img]="RetryIcon" [size]="14" />
+            Retry
+          </button>
+          @if (hasNextLevel()) {
+            <button
+              class="flex-1 py-2.5 rounded-xl text-sm font-semibold
+                     bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              (click)="onNextLevel()"
+            >
+              Next Level
+            </button>
+          } @else {
+            <a
+              routerLink="/challenges"
+              class="flex-1 py-2.5 rounded-xl text-sm font-semibold text-center
+                     bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              (click)="onBack()"
+            >
+              Back to Levels
+            </a>
+          }
+        </div>
+      </div>
+    </div>
+  }
+</main>

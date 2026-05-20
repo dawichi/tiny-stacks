@@ -1,0 +1,104 @@
+<div
+  class="game-board relative bg-slate-100 rounded-lg overflow-hidden"
+  [class.cursor-grabbing]="moveDragServiceId()"
+  [style.width.px]="boardWidth()"
+  [style.height.px]="boardHeight()"
+  (dragover)="onDragOver($event)"
+  (dragleave)="onDragLeave($event)"
+  (drop)="onDrop($event)"
+  (mousemove)="onBoardMouseMove($event)"
+  (mouseup)="onBoardMouseUp()"
+>
+  <!-- Grid lines -->
+  <div
+    class="absolute inset-0 pointer-events-none"
+    [style.background-image]="gridPattern()"
+    [style.background-size]="cellSize() + 'px ' + cellSize() + 'px'"
+  ></div>
+
+  <!-- Toolbar -->
+  <app-board-toolbar />
+
+  <!-- Connection layer (SVG) -->
+  <app-connection-layer
+    [connections]="gameState.connections()"
+    [services]="gameState.services()"
+    [cellSize]="cellSize()"
+    [boardWidth]="boardWidth()"
+    [boardHeight]="boardHeight()"
+    [selectedConnectionId]="gameState.selectedConnectionId()"
+    [packets]="renderedPackets()"
+    [dragPreviewSource]="connectionDragSource()"
+    [dragPreviewCursor]="connectionDragCursor()"
+    (connectionClick)="onConnectionClick($event)"
+  />
+
+  <!-- Placement preview overlay -->
+  @if (previewVisible()) {
+    <div
+      class="absolute rounded-lg pointer-events-none transition-all duration-75"
+      [class.bg-green-400\/30]="previewValid()"
+      [class.border-green-400]="previewValid()"
+      [class.bg-red-400\/30]="!previewValid()"
+      [class.border-red-400]="!previewValid()"
+      [style.left.px]="previewLeft()"
+      [style.top.px]="previewTop()"
+      [style.width.px]="previewWidth()"
+      [style.height.px]="previewHeight()"
+      style="border-width: 2px; border-style: dashed;"
+    ></div>
+  }
+
+  <!-- Services layer -->
+  @for (service of gameState.services(); track service.id) {
+    <app-service
+      [service]="service"
+      [cellSize]="cellSize()"
+      [isSelected]="gameState.selectedServiceId() === service.id"
+      [connectionDragActive]="connectionDragActive()"
+      [runtimeVisual]="getServiceVisual(service.id)"
+      [simulationRunning]="simulation.running()"
+      (click)="onServiceClick(service.id)"
+      (portDragStart)="onPortDragStart($event)"
+      (portDragEnd)="onPortDragEnd($event)"
+      (moveDragStart)="onMoveDragStart($event)"
+    />
+  }
+
+  <!-- Failed packet overlay (above services) -->
+  @if (renderedFailedPackets().length > 0) {
+    <svg
+      class="absolute inset-0 pointer-events-none z-10"
+      [attr.width]="boardWidth()"
+      [attr.height]="boardHeight()"
+    >
+      @for (fp of renderedFailedPackets(); track fp.id) {
+        <circle
+          [attr.cx]="fp.x"
+          [attr.cy]="fp.y"
+          [attr.r]="6 + fp.progress * 14"
+          fill="#ef4444"
+          [attr.opacity]="0.8 - fp.progress * 0.8"
+        />
+        <line
+          [attr.x1]="fp.x - 4 - fp.progress * 4"
+          [attr.y1]="fp.y - 4 - fp.progress * 4"
+          [attr.x2]="fp.x + 4 + fp.progress * 4"
+          [attr.y2]="fp.y + 4 + fp.progress * 4"
+          stroke="white"
+          [attr.stroke-width]="2"
+          [attr.opacity]="1 - fp.progress"
+        />
+        <line
+          [attr.x1]="fp.x + 4 + fp.progress * 4"
+          [attr.y1]="fp.y - 4 - fp.progress * 4"
+          [attr.x2]="fp.x - 4 - fp.progress * 4"
+          [attr.y2]="fp.y + 4 + fp.progress * 4"
+          stroke="white"
+          [attr.stroke-width]="2"
+          [attr.opacity]="1 - fp.progress"
+        />
+      }
+    </svg>
+  }
+</div>

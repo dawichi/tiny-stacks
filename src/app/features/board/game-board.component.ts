@@ -5,6 +5,7 @@ import { getServiceConfig, type ServiceType } from '../../core/game/service-type
 import { type ServiceVisualState, TickEngineService } from '../../core/game/tick-engine.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
+import { BoardToolbarComponent } from './board-toolbar.component';
 
 interface HoverPosition {
     gridX: number;
@@ -14,216 +15,8 @@ interface HoverPosition {
 @Component({
     selector: 'app-game-board',
     standalone: true,
-    imports: [ServiceComponent, ConnectionLayerComponent],
-    template: `
-    <div
-      class="game-board relative bg-slate-100 rounded-lg overflow-hidden"
-      [class.cursor-grabbing]="moveDragServiceId()"
-      [style.width.px]="boardWidth()"
-      [style.height.px]="boardHeight()"
-      (dragover)="onDragOver($event)"
-      (dragleave)="onDragLeave($event)"
-      (drop)="onDrop($event)"
-      (mousemove)="onBoardMouseMove($event)"
-      (mouseup)="onBoardMouseUp()"
-    >
-      <!-- Grid lines -->
-      <div
-        class="absolute inset-0 pointer-events-none"
-        [style.background-image]="gridPattern()"
-        [style.background-size]="cellSize() + 'px ' + cellSize() + 'px'"
-      ></div>
-
-      <!-- Toolbar buttons -->
-      <div class="absolute top-3 right-3 z-10 flex items-center gap-1.5">
-        @if (simulation.running()) {
-          <!-- Debug copy -->
-          <button
-            class="px-1.5 py-0.5 rounded-md bg-white/40 backdrop-blur-sm
-                   text-[10px] font-mono text-slate-400 hover:text-slate-600
-                   hover:bg-white/60 transition-all duration-150 select-none"
-            [class.text-emerald-500]="debugCopied()"
-            (click)="onCopyDebug()"
-          >
-            {{ debugCopied() ? 'Copied!' : 'Debug' }}
-          </button>
-          <!-- Metrics chips -->
-          <div class="flex items-center gap-1 mr-0.5">
-            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
-                         text-[10px] font-medium text-slate-600 select-none">
-              {{ formatNumber(simulation.metrics().throughput) }} req/s
-            </span>
-            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
-                         text-[10px] font-medium text-slate-600 select-none">
-              {{ formatNumber(simulation.metrics().avgLatency) }}ms
-            </span>
-            <span class="px-1.5 py-0.5 rounded-md bg-white/60 backdrop-blur-sm
-                         text-[10px] font-medium select-none"
-              [class.text-red-500]="simulation.metrics().totalFailed > 0"
-              [class.text-slate-600]="simulation.metrics().totalFailed === 0"
-            >
-              {{ simulation.metrics().totalFailed }} err
-            </span>
-          </div>
-          <!-- Speed controls -->
-          <div class="flex items-center gap-0.5 mr-0.5">
-            @for (s of speedOptions; track s) {
-              <button
-                class="px-1.5 py-0.5 rounded-md text-[10px] font-medium select-none
-                       transition-all duration-150 border"
-                [class.bg-slate-600]="simulation.speed() === s"
-                [class.text-white]="simulation.speed() === s"
-                [class.border-slate-600]="simulation.speed() === s"
-                [class.bg-white/60]="simulation.speed() !== s"
-                [class.text-slate-500]="simulation.speed() !== s"
-                [class.border-white/40]="simulation.speed() !== s"
-                [class.hover:bg-white/80]="simulation.speed() !== s"
-                (click)="simulation.speed.set(s)"
-              >
-                {{ s }}x
-              </button>
-            }
-          </div>
-        }
-        <button
-          class="px-2 py-1 rounded-lg flex items-center justify-center
-                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-                 hover:bg-white/90 transition-all duration-200
-                 text-[10px] font-medium text-slate-500 select-none"
-          (click)="onLoadExample()"
-          aria-label="Load example setup"
-        >
-          Example
-        </button>
-        <button
-          class="px-2 py-1 rounded-lg flex items-center justify-center
-                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-                 hover:bg-white/90 transition-all duration-200
-                 text-[10px] font-medium text-red-400 select-none"
-          (click)="onLoadStressTest()"
-          aria-label="Load stress test"
-        >
-          Stress
-        </button>
-        <button
-          class="w-8 h-8 rounded-full flex items-center justify-center
-                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-                 hover:bg-white/90 transition-all duration-200
-                 disabled:opacity-30 disabled:cursor-not-allowed"
-          [disabled]="!gameState.canUndo()"
-          (click)="gameState.undo()"
-          aria-label="Undo"
-        >
-          <span class="text-slate-600 text-sm font-bold select-none">&#x21A9;</span>
-        </button>
-        <button
-          class="w-8 h-8 rounded-full flex items-center justify-center
-                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-                 hover:bg-white/90 transition-all duration-200
-                 disabled:opacity-30 disabled:cursor-not-allowed"
-          [disabled]="!gameState.canRedo()"
-          (click)="gameState.redo()"
-          aria-label="Redo"
-        >
-          <span class="text-slate-600 text-sm font-bold select-none">&#x21AA;</span>
-        </button>
-        <button
-          class="w-8 h-8 rounded-full flex items-center justify-center
-                 bg-white/80 backdrop-blur-md border border-white/40 shadow-md
-                 hover:bg-white/90 transition-all duration-200"
-          (click)="simulation.toggle()"
-          [attr.aria-label]="simulation.running() ? 'Pause simulation' : 'Start simulation'"
-        >
-          <span class="text-slate-600 text-sm font-bold select-none">
-            {{ simulation.running() ? '\u23F8' : '\u25B6' }}
-          </span>
-        </button>
-      </div>
-
-      <!-- Connection layer (SVG) -->
-      <app-connection-layer
-        [connections]="gameState.connections()"
-        [services]="gameState.services()"
-        [cellSize]="cellSize()"
-        [boardWidth]="boardWidth()"
-        [boardHeight]="boardHeight()"
-        [selectedConnectionId]="gameState.selectedConnectionId()"
-        [packets]="renderedPackets()"
-        [dragPreviewSource]="connectionDragSource()"
-        [dragPreviewCursor]="connectionDragCursor()"
-        (connectionClick)="onConnectionClick($event)"
-      />
-
-      <!-- Placement preview overlay -->
-      @if (previewVisible()) {
-        <div
-          class="absolute rounded-lg pointer-events-none transition-all duration-75"
-          [class.bg-green-400/30]="previewValid()"
-          [class.border-green-400]="previewValid()"
-          [class.bg-red-400/30]="!previewValid()"
-          [class.border-red-400]="!previewValid()"
-          [style.left.px]="previewLeft()"
-          [style.top.px]="previewTop()"
-          [style.width.px]="previewWidth()"
-          [style.height.px]="previewHeight()"
-          style="border-width: 2px; border-style: dashed;"
-        ></div>
-      }
-
-      <!-- Services layer -->
-      @for (service of gameState.services(); track service.id) {
-        <app-service
-          [service]="service"
-          [cellSize]="cellSize()"
-          [isSelected]="gameState.selectedServiceId() === service.id"
-          [connectionDragActive]="connectionDragActive()"
-          [runtimeVisual]="getServiceVisual(service.id)"
-          [simulationRunning]="simulation.running()"
-          (click)="onServiceClick(service.id)"
-          (portDragStart)="onPortDragStart($event)"
-          (portDragEnd)="onPortDragEnd($event)"
-          (moveDragStart)="onMoveDragStart($event)"
-        />
-      }
-
-      <!-- Failed packet overlay (above services) -->
-      @if (renderedFailedPackets().length > 0) {
-        <svg
-          class="absolute inset-0 pointer-events-none z-10"
-          [attr.width]="boardWidth()"
-          [attr.height]="boardHeight()"
-        >
-          @for (fp of renderedFailedPackets(); track fp.id) {
-            <circle
-              [attr.cx]="fp.x"
-              [attr.cy]="fp.y"
-              [attr.r]="6 + fp.progress * 14"
-              fill="#ef4444"
-              [attr.opacity]="0.8 - fp.progress * 0.8"
-            />
-            <line
-              [attr.x1]="fp.x - 4 - fp.progress * 4"
-              [attr.y1]="fp.y - 4 - fp.progress * 4"
-              [attr.x2]="fp.x + 4 + fp.progress * 4"
-              [attr.y2]="fp.y + 4 + fp.progress * 4"
-              stroke="white"
-              [attr.stroke-width]="2"
-              [attr.opacity]="1 - fp.progress"
-            />
-            <line
-              [attr.x1]="fp.x + 4 + fp.progress * 4"
-              [attr.y1]="fp.y - 4 - fp.progress * 4"
-              [attr.x2]="fp.x - 4 - fp.progress * 4"
-              [attr.y2]="fp.y + 4 + fp.progress * 4"
-              stroke="white"
-              [attr.stroke-width]="2"
-              [attr.opacity]="1 - fp.progress"
-            />
-          }
-        </svg>
-      }
-    </div>
-  `,
+    imports: [ServiceComponent, ConnectionLayerComponent, BoardToolbarComponent],
+    templateUrl: './game-board.component.html',
     styles: [
         `
     :host {
@@ -244,7 +37,6 @@ export class GameBoardComponent {
     protected readonly simulation = inject(TickEngineService);
 
     // ── Properties ─────────────────────────────────────────────────────
-    protected readonly speedOptions = [0.5, 1, 2];
     private readonly hoverPosition = signal<HoverPosition | null>(null);
 
     // Connection drag state
@@ -335,7 +127,6 @@ export class GameBoardComponent {
         const connections = this.gameState.connections();
         const cellSize = this.cellSize();
 
-        // Build a lookup of connection → bezier curve
         const curveCache = new Map<string, ReturnType<typeof getConnectionBezier>>();
         for (const conn of connections) {
             const src = services.find((s) => s.id === conn.source.serviceId);
@@ -385,21 +176,18 @@ export class GameBoardComponent {
     protected onKeyDown(event: KeyboardEvent): void {
         const mod = event.metaKey || event.ctrlKey;
 
-        // Undo: Ctrl+Z / Cmd+Z
         if (mod && event.key === 'z' && !event.shiftKey) {
             event.preventDefault();
             this.gameState.undo();
             return;
         }
 
-        // Redo: Ctrl+Shift+Z / Cmd+Shift+Z or Ctrl+Y / Cmd+Y
         if ((mod && event.key === 'z' && event.shiftKey) || (mod && event.key === 'y')) {
             event.preventDefault();
             this.gameState.redo();
             return;
         }
 
-        // Delete connection
         const selectedConn = this.gameState.selectedConnectionId();
         if ((event.key === 'Delete' || event.key === 'Backspace') && selectedConn) {
             event.preventDefault();
@@ -407,7 +195,7 @@ export class GameBoardComponent {
         }
     }
 
-    // ── Service interaction methods ────────────────────────────────────
+    // ── Service interaction ────────────────────────────────────────────
     protected onServiceClick(id: string): void {
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(id);
@@ -418,13 +206,12 @@ export class GameBoardComponent {
         this.gameState.selectedConnectionId.set(connectionId);
     }
 
-    // ── Palette drag-drop methods ──────────────────────────────────────
+    // ── Palette drag-drop ──────────────────────────────────────────────
     protected onDragOver(event: DragEvent): void {
         event.preventDefault();
         if (event.dataTransfer) {
             event.dataTransfer.dropEffect = 'copy';
         }
-
         const gridPos = this.eventToGrid(event);
         if (gridPos) {
             this.hoverPosition.set(gridPos);
@@ -453,7 +240,7 @@ export class GameBoardComponent {
         this.gameState.draggingType.set(null);
     }
 
-    // ── Connection drag methods ────────────────────────────────────────
+    // ── Connection drag ────────────────────────────────────────────────
     protected onPortDragStart(event: { serviceId: string; portIndex: number }): void {
         this.connectionDragSource.set(event);
     }
@@ -501,39 +288,12 @@ export class GameBoardComponent {
         }
     }
 
-    // ── Move drag methods ────────────────────────────────────────────
+    // ── Move drag ─────────────────────────────────────────────────────
     protected onMoveDragStart(event: { serviceId: string }): void {
         if (this.connectionDragSource()) return;
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
-    }
-
-    protected readonly debugCopied = signal(false);
-
-    protected onCopyDebug(): void {
-        const snapshot = this.simulation.debugSnapshot();
-        navigator.clipboard.writeText(snapshot);
-        this.debugCopied.set(true);
-        setTimeout(() => this.debugCopied.set(false), 1500);
-    }
-
-    protected onLoadExample(): void {
-        if (this.simulation.running()) {
-            this.simulation.stop();
-        }
-        this.gameState.loadExampleSetup();
-    }
-
-    protected onLoadStressTest(): void {
-        if (this.simulation.running()) {
-            this.simulation.stop();
-        }
-        this.gameState.loadStressTestSetup();
-    }
-
-    protected formatNumber(value: number): string {
-        return Math.round(value).toString();
     }
 
     protected getServiceVisual(serviceId: string): ServiceVisualState | null {
