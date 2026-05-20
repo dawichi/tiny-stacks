@@ -162,23 +162,22 @@ export class ChallengeService {
 
         this.elapsedMs.update((ms) => ms + simDelta);
 
-        const currentStars = this.starStatus();
-        const newStars: [boolean, boolean, boolean] = [...currentStars];
-        let changed = false;
-
-        for (let tier = 0; tier < 3; tier++) {
-            if (currentStars[tier]) continue; // already earned
-
-            const star = challenge.stars[tier];
-            const allPassed = star.conditions.every((cond) => this.evaluateCondition(cond, tier, simDelta));
-
+        // Hierarchical: check from highest tier down, award the first matching tier.
+        // Building the ★3 topology automatically awards all 3 stars.
+        let highestPassed = -1;
+        for (let tier = challenge.stars.length - 1; tier >= 0; tier--) {
+            const allPassed = challenge.stars[tier].conditions.every((cond) =>
+                this.evaluateCondition(cond, tier, simDelta),
+            );
             if (allPassed) {
-                newStars[tier] = true;
-                changed = true;
+                highestPassed = tier;
+                break;
             }
         }
 
-        if (changed) {
+        const newStars: [boolean, boolean, boolean] = [highestPassed >= 0, highestPassed >= 1, highestPassed >= 2];
+        const current = this.starStatus();
+        if (newStars.some((v, i) => v !== current[i])) {
             this.starStatus.set(newStars);
             this.saveProgress();
         }
@@ -219,9 +218,9 @@ export class ChallengeService {
                 return total > 0 ? (m.totalFailed / total) * 100 : 0;
             }
             case 'pathExists':
-                return this.resolvePathExists(cond.path ?? []) ? 1 : 0;
+                return this.resolvePathExists(cond.path ?? []);
             case 'pathNotExists':
-                return this.resolvePathExists(cond.path ?? []) ? 0 : 1;
+                return this.resolvePathExists(cond.path ?? []) === 0 ? 1 : 0;
             case 'filteredPathExists':
                 return this.resolveFilteredPathExists(cond.path ?? [], cond.requiredMethods ?? []) ? 1 : 0;
             default:
@@ -247,24 +246,27 @@ export class ChallengeService {
         );
     }
 
-    private resolvePathExists(path: ServiceType[]): boolean {
-        if (path.length < 2) return true;
+    /**
+     * Counts distinct paths matching the ordered service-type sequence.
+     * Returns >= 1 if any path exists, >= 2 for two distinct paths, etc.
+     * Conditions using pathExists with value: 2 require at least 2 distinct paths (e.g. both LB outputs used).
+     */
+    private resolvePathExists(path: ServiceType[]): number {
+        if (path.length < 2) return 1;
         const services = this.gameState.services();
         const connections = this.gameState.connections();
 
-        const checkPath = (serviceId: string, pathIndex: number): boolean => {
-            if (pathIndex >= path.length) return true;
-            const outgoing = connections.filter((c) => c.source.serviceId === serviceId);
-            for (const conn of outgoing) {
-                const target = services.find((s) => s.id === conn.target.serviceId);
-                if (target?.type === path[pathIndex] && checkPath(target.id, pathIndex + 1)) {
-                    return true;
-                }
-            }
-            return false;
+        const countFrom = (serviceId: string, pathIndex: number): number => {
+            if (pathIndex >= path.length) return 1;
+            return connections
+                .filter((c) => c.source.serviceId === serviceId)
+                .reduce((sum, conn) => {
+                    const target = services.find((s) => s.id === conn.target.serviceId);
+                    return target?.type === path[pathIndex] ? sum + countFrom(target.id, pathIndex + 1) : sum;
+                }, 0);
         };
 
-        return services.filter((s) => s.type === path[0]).some((s) => checkPath(s.id, 1));
+        return services.filter((s) => s.type === path[0]).reduce((sum, s) => sum + countFrom(s.id, 1), 0);
     }
 
     private compare(value: number, operator: ConditionOperator, target: number): boolean {

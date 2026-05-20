@@ -132,7 +132,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.CACHE, count: 1 }],
         stars: [
             {
-                // ★1 — insert the cache: system works via REST→Cache→DB (bypass may still exist)
+                // ★1 — cache added in parallel: cache path exists AND direct bypass still present
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -142,11 +142,27 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         sustainMs: 0,
                         label: 'Route traffic through Cache',
                     },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Direct REST → Database bypass still present',
+                    },
                 ],
             },
             {
-                // ★2 — commit to the cache: remove the direct REST→DB bypass
+                // ★2 — committed to cache: bypass removed, all traffic through cache (even writes)
                 conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Cache is the only path to Database',
+                    },
                     {
                         metric: 'pathNotExists',
                         operator: '>=',
@@ -158,30 +174,26 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — prove it: cache-only routing, system alive, zero errors sustained
+                // ★3 — optimal: reads cached (GET filter), writes skip cache entirely (write filter on REST→DB)
+                // Mutually exclusive with ★2: REST→DB reintroduced with a write-only filter
                 conditions: [
                     {
-                        metric: 'pathExists',
+                        metric: 'filteredPathExists',
                         operator: '>=',
                         value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
+                        requiredMethods: [RequestMethod.GET],
                         sustainMs: 0,
-                        label: 'Cache path is active',
+                        label: 'Cache handles reads only (GET-only filter on REST → Cache)',
                     },
                     {
-                        metric: 'pathNotExists',
+                        metric: 'filteredPathExists',
                         operator: '>=',
                         value: 1,
                         path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
                         sustainMs: 0,
-                        label: 'Cache is the only path to Database',
-                    },
-                    {
-                        metric: 'errorRate',
-                        operator: '<=',
-                        value: 0,
-                        sustainMs: 10000,
-                        label: 'Zero errors for 10s',
+                        label: 'Database receives writes only (write-only filter on REST → Database)',
                     },
                 ],
             },
@@ -230,7 +242,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.LOAD_BALANCER, count: 1 }],
         stars: [
             {
-                // ★1 — introduce the LB: a path through it exists (bypass may still exist)
+                // ★1 — LB introduced: path through LB exists AND direct bypass still present
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -245,10 +257,18 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         sustainMs: 0,
                         label: 'Route traffic through Load Balancer',
                     },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
+                        sustainMs: 0,
+                        label: 'Direct Origin → REST bypass still present',
+                    },
                 ],
             },
             {
-                // ★2 — commit to the LB: remove the direct Origin→REST bypass
+                // ★2 — bypass removed: all traffic through LB (may route to only one REST instance)
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -274,12 +294,13 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — prove it: LB-only routing, system alive, zero errors sustained
+                // ★3 — true distribution: LB routes to BOTH REST instances, bypass removed
+                // value: 2 means at least 2 distinct paths through the sequence
                 conditions: [
                     {
                         metric: 'pathExists',
                         operator: '>=',
-                        value: 1,
+                        value: 2,
                         path: [
                             ServiceType.ORIGIN,
                             ServiceType.LOAD_BALANCER,
@@ -287,7 +308,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                             ServiceType.DATABASE,
                         ],
                         sustainMs: 0,
-                        label: 'Load Balancer path is active',
+                        label: 'Load Balancer distributes to both REST instances',
                     },
                     {
                         metric: 'pathNotExists',
@@ -295,14 +316,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         value: 1,
                         path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
                         sustainMs: 0,
-                        label: 'Load Balancer is the only entry point',
-                    },
-                    {
-                        metric: 'errorRate',
-                        operator: '<=',
-                        value: 0,
-                        sustainMs: 5000,
-                        label: 'Zero errors for 5s',
+                        label: 'All traffic routes through Load Balancer',
                     },
                 ],
             },
@@ -369,7 +383,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — refine reads: GET filter on REST→Cache
+                // ★2 — reads filtered: GET filter on REST→Cache, write path to DB also connected
                 conditions: [
                     {
                         metric: 'filteredPathExists',
@@ -380,11 +394,28 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         sustainMs: 0,
                         label: 'Route GET requests through Cache (GET-only filter)',
                     },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Write path to Database connected',
+                    },
                 ],
             },
             {
-                // ★3 — optimal: write filter on REST→DB + zero errors
+                // ★3 — both paths fully filtered: reads cached (GET), writes direct (POST/PUT/DELETE)
                 conditions: [
+                    {
+                        metric: 'filteredPathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
+                        requiredMethods: [RequestMethod.GET],
+                        sustainMs: 0,
+                        label: 'Route GET requests through Cache (GET-only filter)',
+                    },
                     {
                         metric: 'filteredPathExists',
                         operator: '>=',
@@ -393,13 +424,6 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
                         sustainMs: 0,
                         label: 'Route write requests directly to Database (writes-only filter)',
-                    },
-                    {
-                        metric: 'errorRate',
-                        operator: '<=',
-                        value: 0,
-                        sustainMs: 5000,
-                        label: 'Zero errors for 5s',
                     },
                 ],
             },
