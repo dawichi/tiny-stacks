@@ -71,7 +71,13 @@ Pure DOM-based — no canvas or WebGL. Game board uses CSS background gradients 
 
 ## Code Conventions
 
-**Always read `.cursor/rules/conventions/*` files before making code changes.** All Angular patterns, component structure, naming, and TypeScript rules are defined there.
+**Always read `.cursor/rules/conventions/*` files before making code changes.** All Angular patterns, component structure, naming, and TypeScript rules are defined there. Key rules:
+
+- **Standalone components only**, `inject()` not constructor DI
+- **New control flow** (`@if`, `@for`), not structural directives
+- **Visibility:** `private` default, `protected` for template-accessed members, `public` rarely
+- **Naming: type-first** — `card-user` not `user-card`
+- **Biome:** 4-space indent, 120 char line width, single quotes, trailing commas
 
 ## Workflow Requirements
 
