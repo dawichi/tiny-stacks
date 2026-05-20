@@ -9,28 +9,16 @@ description: Angular standalone components and modern syntax rules
 - **ALL new components MUST be standalone** - we are progressively moving from modules-based Angular to standalone system for future Angular version updates
 - Use `standalone: true` in component decorator
 - Import dependencies directly in the component's `imports` array
-- **Styles**: always inline (`styles: [...]`) — they are small and belong alongside the component class
-- **Templates**: use `templateUrl` for components with 100+ lines of HTML; use inline `template:` for smaller components
-  - External HTML files sit next to the `.ts` file: `foo.component.html`
-  - Example (large component):
-    ```typescript
-    @Component({
-        standalone: true,
-        imports: [RouterLink, LucideAngularModule],
-        selector: 'app-foo',
-        templateUrl: './foo.component.html',
-        styles: [`:host { display: block; }`],
-    })
-    ```
-  - Example (small component, < 100 lines template):
-    ```typescript
-    @Component({
-        standalone: true,
-        imports: [RouterLink],
-        selector: 'app-bar',
-        template: `<div>...</div>`,
-    })
-    ```
+- Example structure:
+```typescript
+@Component({
+    standalone: true,
+    imports: [CommonModule, TranslateModule, ButtonModule],
+    selector: 'app-component-name',
+    templateUrl: './component-name.component.html',
+    styleUrls: ['./component-name.component.scss'],
+})
+```
 
 ## Modern Angular Syntax
 - **Use new control flow syntax instead of structural directives:**
