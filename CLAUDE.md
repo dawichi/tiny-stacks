@@ -108,80 +108,103 @@ All simulation logic lives in `tick-engine.service.ts` (60 tps, configurable 0.5
 
 Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic.
 
-- Each star tier = a distinct player architectural choice (not auto-earned performance metrics)
-- `pathExists` metric enforces correct topology: DFS over connection graph, requires `path: ServiceType[]`
-- `availableResources: { type, count }[]` limits what the player can place (enforced by palette)
-- `sustainMs` on a condition = must hold true continuously for that duration (resets on failure)
+- `pathExists` metric: DFS over connection graph — checks that an ordered sequence of service types is reachable hop by hop
+- `pathNotExists`: inverse — the sequence must NOT be reachable
+- `filteredPathExists`: like `pathExists` for a single hop, but also requires the connection's `filter.methods` to match `requiredMethods` exactly
+- `availableResources: { type, count }[]` limits what the player can place (enforced by palette); must cover all components needed for any of the 3 solution topologies, not just the optimal one
+- `sustainMs`: only valid when a condition genuinely must hold over time — never the sole differentiator between two star tiers
 - Level N+1 unlocks when level N has ≥ 1 star
 - Progress persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
 
 **Challenge design rules:**
 - Player verbs: **place** a service, **connect** two ports, **filter** a connection (per-method toggles)
-- Every star rewards one of those three actions — never a raw metric the player can't control
-- Stars are topology confirmations (`pathExists`) or direct consequences of correct topology (zero errors)
+- Each level defines exactly **3 solution topologies** of increasing quality. The player builds one; the system recognises which tier it is.
+- Stars are **hierarchical**: `ChallengeService` checks ★3 conditions first, then ★2, then ★1. The highest matching tier wins. Building the ★3 topology automatically awards all 3 stars.
+- Each star tier must require a **meaningfully different topology or configuration** from the tier below — never use `sustainMs` as the sole difference between two tiers.
+- `availableResources` must include enough components to build any of the 3 topologies. The palette is the puzzle hint.
+
+**Star quality model:**
+- ★1 = "barely works" — correct components present, but naive wiring (missing the key architectural insight)
+- ★2 = "works correctly" — the key insight applied: bypass removed, filter set, or component used as intended
+- ★3 = "works optimally" — the most sophisticated topology: all components at full purpose, method-level filters applied
+_(L1 is the tutorial exception: stars are step-by-step to teach the UI, not to model solution quality)_
 
 **9-level progression (3×3 grid):**
 
-Row 1 — Learn the components (one new service per level):
-| Level | Name | Given (locked) | Player places | Key move | Stars |
-|-------|------|----------------|---------------|----------|-------|
-| 1 | Hello Backend | Origin, REST, DB — no connections | — | Wire them up in order | origin→REST \| REST→DB \| zero errors 5s |
-| 2 | Cache Layer | Origin, REST, DB — Origin→REST pre-drawn | 1 Cache | Insert Cache between REST and DB; remove direct bypass | REST→Cache \| Cache→DB \| no REST→DB bypass |
-| 3 | Two Backends | Origin, REST₁, REST₂, DB — REST₁→DB + REST₂→DB pre-drawn | 1 Load Balancer | Place LB, route Origin through it to both REST instances | Origin→LB \| LB→REST₁ \| LB→REST₂ |
+Row 1 — Learn the components:
+| # | Name | Locked | Pre-drawn | Player places |
+|---|------|--------|-----------|---------------|
+| 1 | Hello Backend | Origin | — | 1 REST, 1 DB |
+| 2 | Cache Layer | Origin, REST, DB | Origin→REST, REST→DB | 1 Cache |
+| 3 | Two Backends | Origin, REST₁, REST₂, DB | Origin→REST₁, REST₁→DB, REST₂→DB | 1 LB |
 
-Row 2 — Learn routing (connection filters as core mechanic):
-| Level | Name | Given (locked) | Player places | Key move | Stars |
-|-------|------|----------------|---------------|----------|-------|
-| 4 | Smart Routes | Origin, REST, DB, Cache — all placed, no connections | — | Route GETs through Cache, writes direct to DB; set filters on both | REST→Cache (GET-only filter) \| REST→DB (write-only filter) \| Cache→DB connected |
-| 5 | Write Buffer | Origin, REST, DB — Origin→REST pre-drawn | 1 Message Queue | Buffer writes async through MQ; reads bypass it | REST→MQ connected \| REST→MQ filter (POST/PUT/DELETE) \| MQ→DB connected |
-| 6 | The Gateway | Origin, REST, DB, Cache — REST→Cache→DB pre-drawn | 1 API Gateway | Insert GW at entry between Origin and REST | Origin→GW \| GW→REST \| full path works |
+Row 2 — Learn routing (filters as core mechanic):
+| # | Name | Locked | Pre-drawn | Player places |
+|---|------|--------|-----------|---------------|
+| 4 | Smart Routes | Origin, REST, Cache, DB | Origin→REST | — (connect + filter) |
+| 5 | Write Buffer | Origin, REST, DB | Origin→REST, REST→DB | 1 MQ |
+| 6 | The Gateway | Origin, REST, DB | Origin→REST, REST→DB | 1 GW, 1 Cache |
 
 Row 3 — Combine two patterns:
-| Level | Name | Given (locked) | Player places | Key move | Stars |
-|-------|------|----------------|---------------|----------|-------|
-| 7 | Scale + Cache | Origin, REST₁, REST₂, DB | 1 LB + 1 Cache | LB distributes across 2 REST; both share one Cache before DB | Origin→LB→REST₁ \| Origin→LB→REST₂ \| REST→Cache→DB |
-| 8 | Two Paths | Origin, REST₁, REST₂, DB | 1 Cache + 1 MQ | Read path (REST₁→Cache→DB) + write path (REST₂→MQ→DB); filter origin connections to split traffic | origin→REST₁ read filter \| origin→REST₂ write filter \| both paths reach DB |
-| 9 | Full Stack | Origin, DB | 1 GW + 1 LB + 2 REST + 1 Cache + 1 MQ | Build entire production architecture from scratch | GW at entry \| LB distributing to both REST \| Cache + MQ both in use reaching DB |
+| # | Name | Locked | Pre-drawn | Player places |
+|---|------|--------|-----------|---------------|
+| 7 | Scale + Cache | Origin, REST₁, REST₂, DB | REST₁→DB, REST₂→DB | 1 LB, 1 Cache |
+| 8 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
+| 9 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
 
-**Star quality model:**
-Stars rate the quality of a solution, not steps toward it:
-- ★1 = "it works" — a valid complete solution (even naive)
-- ★2 = "it works cleanly" — the obvious shortcut or bypass is deliberately removed
-- ★3 = "it works optimally" — the service is used to its full potential, proven under load
-_(L1 is the tutorial exception — its stars are intentionally step-by-step to guide first-time players)_
+**Per-level solution topologies:**
 
-**Expected UX sequences (actions → stars):**
+The system checks ★3 first; the first matching tier wins. ★2 and ★3 may be mutually exclusive topologies — that is fine; hierarchical evaluation handles it.
 
-Each entry shows the exact player action sequence for a full 3-star run. Use this as the reference during manual UX review.
+> **L1 — Hello Backend** *(tutorial exception: step-by-step UI introduction)*
+> - ★1: `pathExists([Origin, REST])`
+> - ★2: `pathExists([Origin, REST, DB])`
+> - ★3: ★2 + `errorRate = 0` *(only level allowed to use a time-based condition as the ★3 differentiator)*
 
-> L1 — Hello Backend _(tutorial: step-by-step intentional)_
-> 1. Drag REST Service onto grid
-> 2. Connect Origin → REST Service ★ star 1
-> 3. Drag Database onto grid
-> 4. Connect REST Service → Database ★ star 2
-> 5. Wait ~5s ★ star 3
+> **L2 — Cache Layer**
+> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — cache added in parallel, bypass still present
+> - ★2: `pathExists([REST, Cache, DB])` + `pathNotExists([REST, DB])` — bypass removed, all traffic through cache (even writes, suboptimally)
+> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — reads cached, writes skip the cache entirely
+> *(★2 removes REST→DB; ★3 reintroduces it with a write filter — mutually exclusive topologies)*
 
-> L2 — Cache Layer _(quality model: insert → commit → prove)_
-> Initial state: Origin→REST and REST→DB pre-drawn (system works but slow)
-> 1. Drag Cache onto grid
-> 2. Connect REST → Cache, then Cache → Database ★ star 1 (cache path exists, bypass still present)
-> 3. Click + delete the pre-drawn REST → Database connection ★ star 2 (committed to cache)
-> 4. Wait ~10s ★ star 3 (zero errors with cache-only routing)
+> **L3 — Two Backends**
+> - ★1: `pathExists([Origin, LB, REST, DB])` + `pathExists([Origin, REST])` direct — LB introduced, bypass still exists
+> - ★2: `pathExists([Origin, LB, REST, DB])` + `pathNotExists([Origin, REST])` — all traffic through LB, bypass removed (may route to one REST only)
+> - ★3: `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + `pathNotExists([Origin, REST])` — true distribution, both backends receiving traffic
 
-> L3 — Two Backends _(quality model: introduce → commit → prove)_
-> Initial state: Origin→REST₁ and both REST→DB pre-drawn (single-path, unbalanced)
-> 1. Drag Load Balancer onto grid
-> 2. Connect Origin → LB, then LB → REST₁ ★ star 1 (LB path exists, bypass still present)
-> 3. Click + delete the pre-drawn Origin → REST₁ connection ★ star 2 (all traffic through LB)
-> 4. _(bonus: connect LB second output → REST₂ for actual distribution)_
-> 5. Wait ~5s ★ star 3 (zero errors with LB-only routing)
+> **L4 — Smart Routes**
+> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — both paths wired, no filters
+> - ★2: `filteredPathExists([REST, Cache], [GET])` + `pathExists([REST, DB])` — reads filtered through cache
+> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — both paths fully filtered
 
-> L4 — Smart Routes _(quality model: connect → filter reads → filter writes)_
-> Initial state: Origin→REST pre-drawn; Cache and DB locked in place
-> 1. Connect REST → Cache, Cache → Database, REST → Database (naive: all paths, no filters) ★ star 1
-> 2. Click REST → Cache connection → set GET-only filter ★ star 2 (reads optimized)
-> 3. Click REST → Database connection → set writes-only filter (POST/PUT/DELETE) ★ star 3 opportunity
-> 4. Wait ~5s ★ star 3 (optimal routing + zero errors)
+> **L5 — Write Buffer**
+> Pre-drawn REST→DB ensures reads always reach DB; the puzzle is about writes.
+> - ★1: `pathExists([REST, MQ, DB])` — MQ in path, no filter (reads + writes both flow through it)
+> - ★2: `pathExists([REST, MQ, DB])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` — writes buffered; reads still go via REST→DB (pre-drawn, unfiltered)
+> - ★3: `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` + `filteredPathExists([REST, DB], [GET])` — hard separation: writes only through MQ, reads only through DB
+
+> **L6 — The Gateway**
+> Pre-drawn REST→DB ensures the system works before GW is inserted. Player can also add Cache for ★3.
+> - ★1: `pathExists([Origin, GW, REST])` + `pathExists([Origin, REST])` direct — GW inserted but bypass still present
+> - ★2: `pathExists([Origin, GW, REST])` + `pathNotExists([Origin, REST])` — all traffic through GW, bypass removed
+> - ★3: ★2 + `pathExists([REST, Cache, DB])` — GW as sole entry AND Cache on the read path
+
+> **L7 — Scale + Cache**
+> Pre-drawn REST₁→DB and REST₂→DB handle writes. Player adds LB + Cache for reads.
+> - ★1: `pathExists([Origin, LB, REST, Cache, DB])` — LB and Cache both in use, but only one REST connected to LB
+> - ★2: `pathExists([LB, REST₁, Cache, DB])` + `pathExists([LB, REST₂, Cache, DB])` — both REST instances through shared Cache
+> - ★3: ★2 + `filteredPathExists([REST, Cache], [GET])` — Cache is GET-only; writes fall through to pre-drawn REST→DB
+
+> **L8 — Two Paths**
+> Pre-drawn Origin→REST₁ and Origin→REST₂ are unfiltered; the puzzle is building and then filtering both paths.
+> - ★1: `pathExists([REST₁, Cache, DB])` + `pathExists([REST₂, MQ, DB])` — both paths built, no filtering anywhere
+> - ★2: ★1 + `filteredPathExists([Origin, REST₁], [GET])` + `filteredPathExists([Origin, REST₂], [POST,PUT,DELETE])` — origin traffic split at source
+> - ★3: ★2 + `filteredPathExists([REST₁, Cache], [GET])` + `filteredPathExists([REST₂, MQ], [POST,PUT,DELETE])` — double filtering: origin and service level both set
+
+> **L9 — Full Stack**
+> - ★1: `pathExists([Origin, GW, LB, REST, DB])` — GW and LB both present, complete path
+> - ★2: ★1 + `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + one of `pathExists([REST, Cache, DB])` or `pathExists([REST, MQ, DB])` — both backends active, at least one optimisation layer
+> - ★3: ★2 + both `pathExists([REST, Cache, DB])` AND `pathExists([REST, MQ, DB])` — full production architecture: Cache and MQ both in use
 
 ### Service Types
 
