@@ -53,6 +53,45 @@ interface StarToast {
       <app-service-palette [availableResources]="allowedResources()" />
       <app-service-inspector />
 
+      <!-- Objectives panel -->
+      @if (!showBriefing() && challenge()) {
+        <div class="fixed top-6 left-6 z-50 bg-white/70 backdrop-blur-md border border-white/40
+                    rounded-xl shadow-xl p-4 w-64">
+          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">
+            Objectives
+          </h3>
+          <div class="flex flex-col gap-2.5">
+            @for (star of starDetails(); track $index) {
+              <div class="flex items-start gap-2">
+                <lucide-icon
+                  [img]="StarIcon"
+                  [size]="14"
+                  class="shrink-0 mt-0.5"
+                  [class]="star.earned ? 'star-filled text-amber-400' : 'text-slate-300'"
+                />
+                <div class="flex flex-col gap-0.5">
+                  @for (cond of star.conditions; track $index) {
+                    <span class="text-xs leading-snug"
+                      [class]="star.earned ? 'text-slate-400 line-through' : 'text-slate-600'"
+                    >{{ cond }}</span>
+                  }
+                </div>
+              </div>
+            }
+          </div>
+
+          @if (starsEarned() > 0 && hasNextLevel()) {
+            <button
+              class="mt-4 w-full py-2 rounded-lg text-xs font-semibold
+                     bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+              (click)="onNextLevel()"
+            >
+              Next Level →
+            </button>
+          }
+        </div>
+      }
+
       <!-- Star toasts -->
       <div class="fixed bottom-6 right-72 z-[90] flex flex-col gap-2 items-end pointer-events-none">
         @for (toast of starToasts(); track toast.id) {
@@ -113,7 +152,7 @@ interface StarToast {
         </div>
       }
 
-      <!-- Victory overlay -->
+      <!-- Results overlay -->
       @if (showVictory()) {
         <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4">
@@ -142,6 +181,15 @@ interface StarToast {
             </div>
 
             <div class="flex gap-3">
+              @if (starsEarned() < 3) {
+                <button
+                  class="flex-1 py-2.5 rounded-xl text-sm font-semibold
+                         bg-blue-500 text-white hover:bg-blue-600 transition-colors"
+                  (click)="onContinue()"
+                >
+                  Keep Building
+                </button>
+              }
               <button
                 class="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-medium
                        bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors"
@@ -270,7 +318,6 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
 
             const current = this.starStatus();
 
-            // Detect newly earned stars and show toasts
             for (let i = 0; i < 3; i++) {
                 if (current[i] && !this.previousStarStatus[i]) {
                     this.addToast(i);
@@ -278,7 +325,6 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
             }
             this.previousStarStatus = [...current] as [boolean, boolean, boolean];
 
-            // Auto-complete on all 3 stars
             if (current.every(Boolean)) {
                 this.showResults();
             }
@@ -299,6 +345,11 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
 
     protected onBack(): void {
         this.challengeService.unloadChallenge();
+    }
+
+    protected onContinue(): void {
+        this.showVictory.set(false);
+        this.tickEngine.start();
     }
 
     protected onRetry(): void {
