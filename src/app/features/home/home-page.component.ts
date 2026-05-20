@@ -8,11 +8,16 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
     standalone: true,
     imports: [RouterLink, LucideAngularModule],
     template: `
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 flex flex-col items-center justify-center p-8">
-      <header class="text-center mb-12">
-        <h1 class="text-5xl font-bold text-slate-800 tracking-tight">tiny-stacks</h1>
-        <p class="text-lg text-slate-500 mt-2">The Factorio of DevOps</p>
-      </header>
+    <div class="page">
+      <div class="dot-grid"></div>
+
+      <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+        <header class="text-center mb-12">
+          <h1 class="text-5xl font-bold text-slate-800 tracking-tight mb-3">tiny-stacks</h1>
+          <p class="text-lg text-slate-500 leading-relaxed">
+            Place services. Connect them. Watch the traffic flow.
+          </p>
+        </header>
 
       <div class="flex gap-8 flex-wrap justify-center">
 
@@ -86,11 +91,33 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
           </div>
         }
 
+        </div>
       </div>
     </div>
   `,
     styles: [
         `
+    .page {
+      position: relative;
+      min-height: 100vh;
+      overflow: hidden;
+      background: linear-gradient(135deg, #f8fafc 0%, #e9eef5 50%, #dde5f0 100%);
+    }
+
+    .dot-grid {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background-image: radial-gradient(circle, rgba(100, 116, 139, 0.22) 1.5px, transparent 1.5px);
+      background-size: 24px 24px;
+      animation: dot-drift 30s linear infinite;
+    }
+
+    @keyframes dot-drift {
+      from { background-position: 0 0; }
+      to   { background-position: 24px 24px; }
+    }
+
     .mode-card {
       display: flex;
       flex-direction: column;
@@ -98,25 +125,25 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
       padding: 2rem 2.5rem;
       width: 240px;
       border-radius: 1rem;
-      background: rgba(255, 255, 255, 0.6);
-      backdrop-filter: blur(12px);
-      border: 1px solid rgba(255, 255, 255, 0.8);
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      background: rgba(255, 255, 255, 0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.85);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
       transition: transform 200ms ease, box-shadow 200ms ease;
       cursor: pointer;
       text-decoration: none;
     }
     .mode-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.11);
     }
     .mode-card--locked {
-      opacity: 0.55;
+      opacity: 0.5;
       cursor: not-allowed;
     }
     .mode-card--locked:hover {
       transform: none;
-      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.07);
     }
     .icon-circle {
       width: 64px;
