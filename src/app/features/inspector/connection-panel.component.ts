@@ -36,7 +36,7 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
 
         <!-- Method filter -->
         <div class="mb-4">
-          <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Allowed Methods</h4>
+          <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Route Rule</h4>
           <div class="flex gap-1.5">
             @for (m of allMethods; track m) {
               <button

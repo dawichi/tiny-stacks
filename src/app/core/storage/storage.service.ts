@@ -8,6 +8,7 @@ import type { Connection, PlacedService } from '../game/game-state.service';
 export enum StorageKeys {
     GAME_STATE = 'tiny-stacks-state',
     CHALLENGE_PROGRESS = 'tiny-stacks-challenge-progress',
+    TUTORIAL_COMPLETE = 'tiny-stacks-tutorial-complete',
 }
 
 // -----------------------------------------------------
@@ -19,6 +20,7 @@ type StorageSchema = {
         connections: Connection[];
     };
     [StorageKeys.CHALLENGE_PROGRESS]: ChallengeProgress;
+    [StorageKeys.TUTORIAL_COMPLETE]: true;
 };
 
 /**

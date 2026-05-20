@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **Core Loop:** Place → Connect → Watch → Optimize → Iterate
 
 **Game Modes:**
+- **Tutorial** (`/tutorial`) — mandatory interactive walkthrough; teaches all 4 player verbs before Sandbox and Challenges unlock
 - **Sandbox** (`/sandbox`) — unlimited creative building, no goals
 - **Challenges** (`/challenges`) — progressive puzzles with 3-star rating and declarative win conditions
 
@@ -47,6 +48,10 @@ src/app/
 │   │   ├── challenge.service.ts          # Runtime: load, evaluate, persist progress
 │   │   ├── challenge-test-helpers.ts     # Shared test utilities (runTicks, mustFind, mustPlace)
 │   │   └── challenge-level1.spec.ts      # Integration tests for level 1 star evaluation
+│   ├── tutorial/
+│   │   ├── tutorial.model.ts             # TutorialStep type — title, description, hint, realWorldNote
+│   │   ├── tutorial.service.ts           # Step sequencing (computed signals), board init, completion tracking
+│   │   └── tutorial.spec.ts             # Integration tests for all 5 step detection signals
 │   ├── game/
 │   │   ├── game-state.service.ts         # State (Signals) + undo/redo + persistence
 │   │   ├── tick-engine.service.ts        # Tick-based simulation engine (60 tps)
@@ -64,15 +69,17 @@ src/app/
 │   │   └── challenge-page.component.ts/.html # Challenge play view: HUD, briefing, objectives, toasts
 │   ├── connections/
 │   │   └── connection-layer.component.ts # SVG Bezier paths + animated packets
-│   ├── home/home-page.component.ts       # Mode selection (Sandbox / Challenges)
+│   ├── home/home-page.component.ts       # Mode selection (Tutorial / Sandbox / Challenges); gates Sandbox+Challenges behind tutorial completion
 │   ├── inspector/
 │   │   ├── service-inspector.component.ts   # Thin host — renders service-panel or connection-panel
 │   │   ├── service-panel.component.ts/.html # Selected service details + live stats
-│   │   └── connection-panel.component.ts    # Selected connection filter UI
+│   │   └── connection-panel.component.ts    # Selected connection route-rule UI
 │   ├── palette/service-palette.component.ts # Service palette (availableResources limits)
 │   ├── sandbox/sandbox-page.component.ts    # Sandbox mode wrapper
-│   └── services/service.component.ts        # Service tile + ports + drag-to-move
-├── app.routes.ts                            # Routes: /, /sandbox, /challenges, /challenges/:id
+│   ├── services/service.component.ts        # Service tile + ports + drag-to-move
+│   └── tutorial/
+│       └── tutorial-page.component.ts/.html # Interactive tutorial: step-by-step guided board
+├── app.routes.ts                            # Routes: /, /tutorial, /sandbox, /challenges, /challenges/:id
 └── app.ts                                   # Root: router-outlet only
 ```
 
@@ -99,7 +106,7 @@ All simulation logic lives in `tick-engine.service.ts` (60 tps, configurable 0.5
 ### Connection System
 
 - **Model:** `Connection { id, source: PortRef, target: PortRef, filter?: ConnectionFilter }`
-- **Routing filters:** Per-connection method toggles (GET/POST/PUT/DELETE) + weight (1–100). Evaluated via `pickConnection()` in tick engine.
+- **Route rules:** Per-connection method toggles (GET/POST/PUT/DELETE) + weight (1–100). Evaluated via `pickConnection()` in tick engine. UI calls these "route rules" (not "filters") — the concept is that a configured route only carries traffic matching its rule, exactly as API gateways and service meshes work in production.
 - **Port rules:** OUTPUT/BIDIRECTIONAL → INPUT/BIDIRECTIONAL only. No self-connections, no duplicates.
 - **Rendering:** SVG Bezier curves (`ConnectionLayerComponent`), layered between grid and services.
 - **Interaction:** mousedown on port → mousemove shows dashed preview → mouseup on target port creates connection.
@@ -117,7 +124,7 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 - Progress persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
 
 **Challenge design rules:**
-- Player verbs: **place** a service, **connect** two ports, **filter** a connection (per-method toggles)
+- Player verbs: **place** a service, **connect** two ports, **set a route rule** on a connection (per-method toggles)
 - Each level defines exactly **3 solution topologies** of increasing quality. The player builds one; the system recognises which tier it is.
 - Stars are **hierarchical**: `ChallengeService` checks ★3 conditions first, then ★2, then ★1. The highest matching tier wins. Building the ★3 topology automatically awards all 3 stars.
 - Each star tier must require a **meaningfully different topology or configuration** from the tier below — never use `sustainMs` as the sole difference between two tiers.
@@ -125,86 +132,119 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 
 **Star quality model:**
 - ★1 = "barely works" — correct components present, but naive wiring (missing the key architectural insight)
-- ★2 = "works correctly" — the key insight applied: bypass removed, filter set, or component used as intended
-- ★3 = "works optimally" — the most sophisticated topology: all components at full purpose, method-level filters applied
-_(L1 is the tutorial exception: stars are step-by-step to teach the UI, not to model solution quality)_
+- ★2 = "works correctly" — the key insight applied: bypass removed, route rule set, or component used as intended
+- ★3 = "works optimally" — the most sophisticated topology: all components at full purpose, method-level route rules applied
 
 **9-level progression (3×3 grid):**
 
-Row 1 — Learn the components:
-| # | Name | Locked | Pre-drawn | Player places |
-|---|------|--------|-----------|---------------|
-| 1 | Hello Backend | Origin | — | 1 REST, 1 DB |
-| 2 | Cache Layer | Origin, REST, DB | Origin→REST, REST→DB | 1 Cache |
-| 3 | Two Backends | Origin, REST₁, REST₂, DB | Origin→REST₁, REST₁→DB, REST₂→DB | 1 LB |
+> L1 (Hello Backend) removed — its role as mechanic teacher is now the `/tutorial`.
+> L2 (Cache Layer) removed as a challenge — its topology is the tutorial's teaching scenario.
+> Old L3–L9 renumbered L1–L7. L8–L9 are TBD (design pending).
 
-Row 2 — Learn routing (filters as core mechanic):
+Row 1 — Learn routing (route rules as core mechanic):
 | # | Name | Locked | Pre-drawn | Player places |
 |---|------|--------|-----------|---------------|
-| 4 | Smart Routes | Origin, REST, Cache, DB | Origin→REST | — (connect + filter) |
-| 5 | Write Buffer | Origin, REST, DB | Origin→REST, REST→DB | 1 MQ |
-| 6 | The Gateway | Origin, REST, DB | Origin→REST, REST→DB | 1 GW, 1 Cache |
+| 1 | Two Backends | Origin, REST₁, REST₂, DB | Origin→REST₁, REST₁→DB, REST₂→DB | 1 LB |
+| 2 | Smart Routes | Origin, REST, Cache, DB | Origin→REST | — (connect + set route rules) |
+| 3 | Write Buffer | Origin, REST, DB | Origin→REST, REST→DB | 1 MQ |
 
-Row 3 — Combine two patterns:
+Row 2 — Combine two patterns:
 | # | Name | Locked | Pre-drawn | Player places |
 |---|------|--------|-----------|---------------|
-| 7 | Scale + Cache | Origin, REST₁, REST₂, DB | REST₁→DB, REST₂→DB | 1 LB, 1 Cache |
-| 8 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
-| 9 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
+| 4 | The Gateway | Origin, REST, DB | Origin→REST, REST→DB | 1 GW, 1 Cache |
+| 5 | Scale + Cache | Origin, REST₁, REST₂, DB | REST₁→DB, REST₂→DB | 1 LB, 1 Cache |
+| 6 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
+
+Row 3 — Advanced:
+| # | Name | Locked | Pre-drawn | Player places |
+|---|------|--------|-----------|---------------|
+| 7 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
+| 8 | TBD | — | — | — |
+| 9 | TBD | — | — | — |
 
 **Per-level solution topologies:**
 
 The system checks ★3 first; the first matching tier wins. ★2 and ★3 may be mutually exclusive topologies — that is fine; hierarchical evaluation handles it.
 
-> **L1 — Hello Backend** *(tutorial exception: step-by-step UI introduction)*
-> - ★1: `pathExists([Origin, REST])`
-> - ★2: `pathExists([Origin, REST, DB])`
-> - ★3: ★2 + `errorRate = 0` *(only level allowed to use a time-based condition as the ★3 differentiator)*
-
-> **L2 — Cache Layer**
-> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — cache added in parallel, bypass still present
-> - ★2: `pathExists([REST, Cache, DB])` + `pathNotExists([REST, DB])` — bypass removed, all traffic through cache (even writes, suboptimally)
-> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — reads cached, writes skip the cache entirely
-> *(★2 removes REST→DB; ★3 reintroduces it with a write filter — mutually exclusive topologies)*
-
-> **L3 — Two Backends**
+> **L1 — Two Backends** *(old L3)*
 > - ★1: `pathExists([Origin, LB, REST, DB])` + `pathExists([Origin, REST])` direct — LB introduced, bypass still exists
 > - ★2: `pathExists([Origin, LB, REST, DB])` + `pathNotExists([Origin, REST])` — all traffic through LB, bypass removed (may route to one REST only)
 > - ★3: `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + `pathNotExists([Origin, REST])` — true distribution, both backends receiving traffic
 
-> **L4 — Smart Routes**
-> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — both paths wired, no filters
-> - ★2: `filteredPathExists([REST, Cache], [GET])` + `pathExists([REST, DB])` — reads filtered through cache
-> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — both paths fully filtered
+> **L2 — Smart Routes** *(old L4)*
+> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — both paths wired, no route rules
+> - ★2: `filteredPathExists([REST, Cache], [GET])` + `pathExists([REST, DB])` — reads routed through cache
+> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — both paths fully ruled
 
-> **L5 — Write Buffer**
+> **L3 — Write Buffer** *(old L5)*
 > Pre-drawn REST→DB ensures reads always reach DB; the puzzle is about writes.
-> - ★1: `pathExists([REST, MQ, DB])` — MQ in path, no filter (reads + writes both flow through it)
-> - ★2: `pathExists([REST, MQ, DB])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` — writes buffered; reads still go via REST→DB (pre-drawn, unfiltered)
+> - ★1: `pathExists([REST, MQ, DB])` — MQ in path, no route rule (reads + writes both flow through it)
+> - ★2: `pathExists([REST, MQ, DB])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` — writes buffered; reads still go via REST→DB (pre-drawn, unruled)
 > - ★3: `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` + `filteredPathExists([REST, DB], [GET])` — hard separation: writes only through MQ, reads only through DB
 
-> **L6 — The Gateway**
+> **L4 — The Gateway** *(old L6)*
 > Pre-drawn REST→DB ensures the system works before GW is inserted. Player can also add Cache for ★3.
 > - ★1: `pathExists([Origin, GW, REST])` + `pathExists([Origin, REST])` direct — GW inserted but bypass still present
 > - ★2: `pathExists([Origin, GW, REST])` + `pathNotExists([Origin, REST])` — all traffic through GW, bypass removed
 > - ★3: ★2 + `pathExists([REST, Cache, DB])` — GW as sole entry AND Cache on the read path
 
-> **L7 — Scale + Cache**
+> **L5 — Scale + Cache** *(old L7)*
 > Pre-drawn REST₁→DB and REST₂→DB handle writes. Player adds LB + Cache for reads.
 > - ★1: `pathExists([Origin, LB, REST, Cache, DB])` — LB and Cache both in use, but only one REST connected to LB
 > - ★2: `pathExists([LB, REST₁, Cache, DB])` + `pathExists([LB, REST₂, Cache, DB])` — both REST instances through shared Cache
 > - ★3: ★2 + `filteredPathExists([REST, Cache], [GET])` — Cache is GET-only; writes fall through to pre-drawn REST→DB
 
-> **L8 — Two Paths**
-> Pre-drawn Origin→REST₁ and Origin→REST₂ are unfiltered; the puzzle is building and then filtering both paths.
-> - ★1: `pathExists([REST₁, Cache, DB])` + `pathExists([REST₂, MQ, DB])` — both paths built, no filtering anywhere
+> **L6 — Two Paths** *(old L8)*
+> Pre-drawn Origin→REST₁ and Origin→REST₂ are unruled; the puzzle is building and then ruling both paths.
+> - ★1: `pathExists([REST₁, Cache, DB])` + `pathExists([REST₂, MQ, DB])` — both paths built, no route rules
 > - ★2: ★1 + `filteredPathExists([Origin, REST₁], [GET])` + `filteredPathExists([Origin, REST₂], [POST,PUT,DELETE])` — origin traffic split at source
-> - ★3: ★2 + `filteredPathExists([REST₁, Cache], [GET])` + `filteredPathExists([REST₂, MQ], [POST,PUT,DELETE])` — double filtering: origin and service level both set
+> - ★3: ★2 + `filteredPathExists([REST₁, Cache], [GET])` + `filteredPathExists([REST₂, MQ], [POST,PUT,DELETE])` — double ruling: origin and service level both set
 
-> **L9 — Full Stack**
+> **L7 — Full Stack** *(old L9)*
 > - ★1: `pathExists([Origin, GW, LB, REST, DB])` — GW and LB both present, complete path
 > - ★2: ★1 + `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + one of `pathExists([REST, Cache, DB])` or `pathExists([REST, MQ, DB])` — both backends active, at least one optimisation layer
 > - ★3: ★2 + both `pathExists([REST, Cache, DB])` AND `pathExists([REST, MQ, DB])` — full production architecture: Cache and MQ both in use
+
+> **L8–L9** — TBD (design pending)
+
+### Tutorial System
+
+Interactive, step-by-step introduction to all 4 player verbs. Uses the Cache Layer topology as its teaching scenario (same as old Challenge 2 — the simplest setup that requires every mechanic).
+
+**Steps (in order — each step is auto-detected from game state; the panel advances when the condition becomes true):**
+1. **Place** — drag the Cache service from the palette onto the grid
+2. **Connect** — draw a connection from REST output → Cache input
+3. **Connect** — draw a connection from Cache output → DB input
+4. **Disconnect** — remove the existing REST → DB connection (click it, press Delete)
+5. **Route rule** — click REST → Cache connection, set method filter to GET only in the panel
+
+**Mechanic:** A fixed step panel (top-right) shows the current step title, description, hint, and a real-world note. Progress dots track completion. All other interactions remain possible — no hard locks. Step detection is purely computed from `GameStateService` signals (no tick engine needed).
+
+**Completion:** Brief celebration overlay, then routes to home with Sandbox and Challenges unlocked. Progress stored in `StorageKeys.TUTORIAL_COMPLETE`.
+
+**Home page gating:** If `TUTORIAL_COMPLETE` is not set, Sandbox and Challenges cards are shown as locked with a "Complete the tutorial first" tooltip. The Tutorial card is always accessible.
+
+### Insight Pills
+
+A two-layer contextual learning system. Surfaces real-world concepts at the moment they're relevant — never interrupts flow.
+
+**Layer 1 — Inspector "About" section**
+When any service or connection is selected, a collapsed "About" section appears below the live stats panel. Always available, zero friction.
+- For services: real-world name, canonical examples (Redis, RabbitMQ, nginx/Envoy), one-line concept
+- For connections with a route rule active: "This is how API gateways route traffic — nginx, Envoy, and Kong all work this way"
+
+**Layer 2 — Discovery toasts**
+First-time pattern recognition triggers a brief toast (3s, dismissible). Only fires once per pattern per player session (tracked in localStorage via `InsightService`).
+
+Trigger examples:
+- First cache HIT → explain hit rate and why it matters at scale
+- Queue overflow → "This is backpressure — your DB can't keep up with write load"
+- Completing a recognizable pattern (read-through cache, pub-sub, load-balanced cluster) → name the pattern + one real-world context sentence
+- First route rule set → "Route rules like this power API gateways — Netflix's Zuul routes millions of requests this way"
+
+**Content lives in** `core/insights/insight-definitions.ts` — pure data, keyed by trigger ID. `InsightService` evaluates triggers from game events and emits new `InsightDefinition` objects to subscribers.
+
+**Categories:** `service` · `pattern` · `mechanic` · `failure`
 
 ### Service Types
 
@@ -260,12 +300,13 @@ Do these at the end of a long session or every ~10 commits:
 ## Roadmap
 
 ### Next
-1. Levels 2–9: implement per the 9-level progression table above
-2. Service configuration editing (processing time, queue size per service)
-3. Batch rendering at high throughput (one ball = N requests)
-4. Responsive grid (zoom/pan)
+1. **Insight Pills** — Inspector "About" section + discovery toasts; `InsightService` + `insight-definitions.ts` in `core/insights/`
+2. **Challenges L1–L7** — implement per the renumbered progression table (old L3–L9); delete old L1/L2 definitions and `challenge-level1.spec.ts`
+3. Service configuration editing (processing time, queue size per service)
+4. Batch rendering at high throughput (one ball = N requests)
 
 ### Future
+- Responsive grid (zoom/pan)
 - Cascading failure visualization (domino effect)
 - Landing page with live demo
 - Import/export sandbox layouts
