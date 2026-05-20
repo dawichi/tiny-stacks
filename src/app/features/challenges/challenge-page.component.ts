@@ -1,11 +1,16 @@
 import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ArrowLeft, LucideAngularModule, Play, RotateCcw, Star } from 'lucide-angular';
+import { ArrowLeft, LucideAngularModule, Play, RotateCcw, Star, X } from 'lucide-angular';
 import { ChallengeService } from '../../core/challenges/challenge.service';
 import { TickEngineService } from '../../core/game/tick-engine.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
+
+interface StarToast {
+    id: number;
+    starIndex: number;
+}
 
 @Component({
     selector: 'app-challenge-page',
@@ -48,6 +53,30 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
       <app-service-palette [availableResources]="allowedResources()" />
       <app-service-inspector />
 
+      <!-- Star toasts -->
+      <div class="fixed bottom-6 right-72 z-[90] flex flex-col gap-2 items-end pointer-events-none">
+        @for (toast of starToasts(); track toast.id) {
+          <div class="pointer-events-auto flex items-center gap-3 px-4 py-3
+                      bg-white/90 backdrop-blur-md border border-amber-200/60
+                      rounded-xl shadow-xl text-sm toast-in">
+            <lucide-icon [img]="StarIcon" [size]="16" class="star-filled text-amber-400 shrink-0" />
+            <span class="font-medium text-slate-700">{{ ordinal(toast.starIndex) }} star earned!</span>
+            <button
+              class="text-blue-500 hover:text-blue-700 font-semibold transition-colors"
+              (click)="onViewResults()"
+            >
+              View Results →
+            </button>
+            <button
+              class="text-slate-400 hover:text-slate-600 transition-colors"
+              (click)="dismissToast(toast.id)"
+            >
+              <lucide-icon [img]="XIcon" [size]="14" />
+            </button>
+          </div>
+        }
+      </div>
+
       <!-- Briefing overlay -->
       @if (showBriefing()) {
         <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
@@ -88,7 +117,9 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
       @if (showVictory()) {
         <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
           <div class="bg-white/90 backdrop-blur-md border border-white/60 rounded-2xl shadow-2xl p-8 max-w-md mx-4">
-            <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">Challenge Complete!</h2>
+            <h2 class="text-2xl font-bold text-slate-800 mb-4 text-center">
+              {{ starsEarned() === 3 ? 'Challenge Complete!' : 'Results' }}
+            </h2>
 
             <!-- Star details -->
             <div class="flex flex-col gap-3 mb-6">
@@ -152,6 +183,13 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
       fill: currentColor;
       filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
     }
+    @keyframes toast-in {
+      from { opacity: 0; transform: translateX(12px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+    .toast-in {
+      animation: toast-in 200ms ease-out;
+    }
   `,
     ],
 })
@@ -167,10 +205,12 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
     protected readonly StarIcon = Star;
     protected readonly PlayIcon = Play;
     protected readonly RetryIcon = RotateCcw;
+    protected readonly XIcon = X;
 
     // ── State ──────────────────────────────────────────────────────────
     protected readonly showBriefing = signal(true);
     protected readonly showVictory = signal(false);
+    protected readonly starToasts = signal<StarToast[]>([]);
 
     protected readonly challenge = this.challengeService.activeChallenge;
     protected readonly starStatus = this.challengeService.starStatus;
@@ -209,8 +249,11 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
         return idx < defs.length - 1;
     });
 
-    // ── Victory detection ──────────────────────────────────────────────
+    // ── Private state ──────────────────────────────────────────────────
+    private previousStarStatus: [boolean, boolean, boolean] = [false, false, false];
+    private toastCounter = 0;
     private victoryCheckInterval: ReturnType<typeof setInterval> | null = null;
+    private toastTimers: ReturnType<typeof setTimeout>[] = [];
 
     // ── Lifecycle ──────────────────────────────────────────────────────
     ngOnInit(): void {
@@ -222,20 +265,29 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
             }
         }
 
-        // Poll star status for victory (all stars earned = victory)
         this.victoryCheckInterval = setInterval(() => {
-            if (this.starStatus().every(Boolean) && !this.showVictory() && !this.showBriefing()) {
-                this.showVictory.set(true);
-                this.tickEngine.stop();
-                this.challengeService.saveProgress();
+            if (this.showBriefing() || this.showVictory()) return;
+
+            const current = this.starStatus();
+
+            // Detect newly earned stars and show toasts
+            for (let i = 0; i < 3; i++) {
+                if (current[i] && !this.previousStarStatus[i]) {
+                    this.addToast(i);
+                }
+            }
+            this.previousStarStatus = [...current] as [boolean, boolean, boolean];
+
+            // Auto-complete on all 3 stars
+            if (current.every(Boolean)) {
+                this.showResults();
             }
         }, 200);
     }
 
     ngOnDestroy(): void {
-        if (this.victoryCheckInterval) {
-            clearInterval(this.victoryCheckInterval);
-        }
+        if (this.victoryCheckInterval) clearInterval(this.victoryCheckInterval);
+        for (const t of this.toastTimers) clearTimeout(t);
         this.challengeService.unloadChallenge();
     }
 
@@ -251,6 +303,8 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
 
     protected onRetry(): void {
         this.showVictory.set(false);
+        this.starToasts.set([]);
+        this.previousStarStatus = [false, false, false];
         const current = this.challenge();
         if (current) {
             this.challengeService.loadChallenge(current.id);
@@ -270,5 +324,32 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
             this.challengeService.loadChallenge(next.id);
             this.showBriefing.set(true);
         }
+    }
+
+    protected onViewResults(): void {
+        this.showResults();
+    }
+
+    protected dismissToast(id: number): void {
+        this.starToasts.update((toasts) => toasts.filter((t) => t.id !== id));
+    }
+
+    protected ordinal(starIndex: number): string {
+        return (['1st', '2nd', '3rd'] as const)[starIndex] ?? `${starIndex + 1}th`;
+    }
+
+    // ── Private ────────────────────────────────────────────────────────
+    private showResults(): void {
+        this.starToasts.set([]);
+        this.showVictory.set(true);
+        this.tickEngine.stop();
+        this.challengeService.saveProgress();
+    }
+
+    private addToast(starIndex: number): void {
+        const id = this.toastCounter++;
+        this.starToasts.update((toasts) => [...toasts, { id, starIndex }]);
+        const timer = setTimeout(() => this.dismissToast(id), 4000);
+        this.toastTimers.push(timer);
     }
 }
