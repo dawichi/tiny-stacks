@@ -22,3 +22,16 @@ export function mustPlace(gameState: GameStateService, type: ServiceType, x: num
     if (!placed) throw new Error(`Test setup: could not place ${type} at (${x},${y})`);
     return placed;
 }
+
+export function mustConnect(
+    gameState: GameStateService,
+    source: { serviceId: string; portIndex: number },
+    target: { serviceId: string; portIndex: number },
+): ReturnType<GameStateService['addConnection']> & {} {
+    const conn = gameState.addConnection(source, target);
+    if (!conn)
+        throw new Error(
+            `Test setup: could not connect ${source.serviceId}:${source.portIndex} → ${target.serviceId}:${target.portIndex}`,
+        );
+    return conn;
+}

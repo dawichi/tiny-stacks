@@ -1,5 +1,5 @@
 import type { ServiceType } from '../game/service-types.config';
-import type { ConnectionFilter, TrafficPattern } from '../game/sim-types';
+import type { ConnectionFilter, RequestMethod, TrafficPattern } from '../game/sim-types';
 
 // ── Win Condition Types ──────────────────────────────────────────────
 
@@ -10,7 +10,9 @@ export type ConditionMetric =
     | 'avgLatency'
     | 'totalCompleted'
     | 'serviceCount'
-    | 'pathExists';
+    | 'pathExists'
+    | 'pathNotExists'
+    | 'filteredPathExists';
 
 export type ConditionOperator = '>=' | '<=' | '<' | '>' | '==';
 
@@ -21,8 +23,10 @@ export interface WinCondition {
     value: number;
     sustainMs?: number; // must hold true for this duration (default 0 = instant)
     label: string; // human-readable, e.g. "Handle 50 req/s for 10s"
-    /** Required for metric === 'pathExists': ordered list of service types forming the expected chain */
+    /** Required for metric === 'pathExists' | 'filteredPathExists': ordered service type chain */
     path?: ServiceType[];
+    /** Required for metric === 'filteredPathExists': the connection must allow EXACTLY these methods */
+    requiredMethods?: RequestMethod[];
 }
 
 /** Star tier — all conditions must pass to earn this star */

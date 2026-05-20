@@ -115,12 +115,73 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 - Level N+1 unlocks when level N has ≥ 1 star
 - Progress persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
 
-**Current levels:**
-| Level | New concept | Star design |
-|-------|-------------|-------------|
-| 1 — Hello Backend | REST + DB | topology steps: connect origin→rest, then →db, then zero errors for 5s |
-| 2 — Cache It | Cache | route through cache, then latency, then zero errors |
-| 3 — Scale Out | Load Balancer | route through LB, then throughput, then zero errors |
+**Challenge design rules:**
+- Player verbs: **place** a service, **connect** two ports, **filter** a connection (per-method toggles)
+- Every star rewards one of those three actions — never a raw metric the player can't control
+- Stars are topology confirmations (`pathExists`) or direct consequences of correct topology (zero errors)
+
+**9-level progression (3×3 grid):**
+
+Row 1 — Learn the components (one new service per level):
+| Level | Name | Given (locked) | Player places | Key move | Stars |
+|-------|------|----------------|---------------|----------|-------|
+| 1 | Hello Backend | Origin, REST, DB — no connections | — | Wire them up in order | origin→REST \| REST→DB \| zero errors 5s |
+| 2 | Cache Layer | Origin, REST, DB — Origin→REST pre-drawn | 1 Cache | Insert Cache between REST and DB; remove direct bypass | REST→Cache \| Cache→DB \| no REST→DB bypass |
+| 3 | Two Backends | Origin, REST₁, REST₂, DB — REST₁→DB + REST₂→DB pre-drawn | 1 Load Balancer | Place LB, route Origin through it to both REST instances | Origin→LB \| LB→REST₁ \| LB→REST₂ |
+
+Row 2 — Learn routing (connection filters as core mechanic):
+| Level | Name | Given (locked) | Player places | Key move | Stars |
+|-------|------|----------------|---------------|----------|-------|
+| 4 | Smart Routes | Origin, REST, DB, Cache — all placed, no connections | — | Route GETs through Cache, writes direct to DB; set filters on both | REST→Cache (GET-only filter) \| REST→DB (write-only filter) \| Cache→DB connected |
+| 5 | Write Buffer | Origin, REST, DB — Origin→REST pre-drawn | 1 Message Queue | Buffer writes async through MQ; reads bypass it | REST→MQ connected \| REST→MQ filter (POST/PUT/DELETE) \| MQ→DB connected |
+| 6 | The Gateway | Origin, REST, DB, Cache — REST→Cache→DB pre-drawn | 1 API Gateway | Insert GW at entry between Origin and REST | Origin→GW \| GW→REST \| full path works |
+
+Row 3 — Combine two patterns:
+| Level | Name | Given (locked) | Player places | Key move | Stars |
+|-------|------|----------------|---------------|----------|-------|
+| 7 | Scale + Cache | Origin, REST₁, REST₂, DB | 1 LB + 1 Cache | LB distributes across 2 REST; both share one Cache before DB | Origin→LB→REST₁ \| Origin→LB→REST₂ \| REST→Cache→DB |
+| 8 | Two Paths | Origin, REST₁, REST₂, DB | 1 Cache + 1 MQ | Read path (REST₁→Cache→DB) + write path (REST₂→MQ→DB); filter origin connections to split traffic | origin→REST₁ read filter \| origin→REST₂ write filter \| both paths reach DB |
+| 9 | Full Stack | Origin, DB | 1 GW + 1 LB + 2 REST + 1 Cache + 1 MQ | Build entire production architecture from scratch | GW at entry \| LB distributing to both REST \| Cache + MQ both in use reaching DB |
+
+**Star quality model:**
+Stars rate the quality of a solution, not steps toward it:
+- ★1 = "it works" — a valid complete solution (even naive)
+- ★2 = "it works cleanly" — the obvious shortcut or bypass is deliberately removed
+- ★3 = "it works optimally" — the service is used to its full potential, proven under load
+_(L1 is the tutorial exception — its stars are intentionally step-by-step to guide first-time players)_
+
+**Expected UX sequences (actions → stars):**
+
+Each entry shows the exact player action sequence for a full 3-star run. Use this as the reference during manual UX review.
+
+> L1 — Hello Backend _(tutorial: step-by-step intentional)_
+> 1. Drag REST Service onto grid
+> 2. Connect Origin → REST Service ★ star 1
+> 3. Drag Database onto grid
+> 4. Connect REST Service → Database ★ star 2
+> 5. Wait ~5s ★ star 3
+
+> L2 — Cache Layer _(quality model: insert → commit → prove)_
+> Initial state: Origin→REST and REST→DB pre-drawn (system works but slow)
+> 1. Drag Cache onto grid
+> 2. Connect REST → Cache, then Cache → Database ★ star 1 (cache path exists, bypass still present)
+> 3. Click + delete the pre-drawn REST → Database connection ★ star 2 (committed to cache)
+> 4. Wait ~10s ★ star 3 (zero errors with cache-only routing)
+
+> L3 — Two Backends _(quality model: introduce → commit → prove)_
+> Initial state: Origin→REST₁ and both REST→DB pre-drawn (single-path, unbalanced)
+> 1. Drag Load Balancer onto grid
+> 2. Connect Origin → LB, then LB → REST₁ ★ star 1 (LB path exists, bypass still present)
+> 3. Click + delete the pre-drawn Origin → REST₁ connection ★ star 2 (all traffic through LB)
+> 4. _(bonus: connect LB second output → REST₂ for actual distribution)_
+> 5. Wait ~5s ★ star 3 (zero errors with LB-only routing)
+
+> L4 — Smart Routes _(quality model: connect → filter reads → filter writes)_
+> Initial state: Origin→REST pre-drawn; Cache and DB locked in place
+> 1. Connect REST → Cache, Cache → Database, REST → Database (naive: all paths, no filters) ★ star 1
+> 2. Click REST → Cache connection → set GET-only filter ★ star 2 (reads optimized)
+> 3. Click REST → Database connection → set writes-only filter (POST/PUT/DELETE) ★ star 3 opportunity
+> 4. Wait ~5s ★ star 3 (optimal routing + zero errors)
 
 ### Service Types
 
@@ -176,7 +237,7 @@ Do these at the end of a long session or every ~10 commits:
 ## Roadmap
 
 ### Next
-1. Levels 4–6: Message Queue, API Gateway, Full Stack combinations
+1. Levels 2–9: implement per the 9-level progression table above
 2. Service configuration editing (processing time, queue size per service)
 3. Batch rendering at high throughput (one ball = N requests)
 4. Responsive grid (zoom/pan)

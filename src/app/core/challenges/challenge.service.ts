@@ -1,7 +1,7 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { GameStateService } from '../game/game-state.service';
 import type { ServiceType } from '../game/service-types.config';
-import type { TrafficPattern } from '../game/sim-types';
+import type { RequestMethod, TrafficPattern } from '../game/sim-types';
 import { TickEngineService } from '../game/tick-engine.service';
 import { StorageKeys, StorageService } from '../storage/storage.service';
 import type { ChallengeDefinition, ChallengeProgress, ConditionOperator, WinCondition } from './challenge.model';
@@ -220,9 +220,31 @@ export class ChallengeService {
             }
             case 'pathExists':
                 return this.resolvePathExists(cond.path ?? []) ? 1 : 0;
+            case 'pathNotExists':
+                return this.resolvePathExists(cond.path ?? []) ? 0 : 1;
+            case 'filteredPathExists':
+                return this.resolveFilteredPathExists(cond.path ?? [], cond.requiredMethods ?? []) ? 1 : 0;
             default:
                 return 0;
         }
+    }
+
+    private resolveFilteredPathExists(path: ServiceType[], requiredMethods: RequestMethod[]): boolean {
+        if (path.length < 2) return false;
+        const services = this.gameState.services();
+        const connections = this.gameState.connections();
+        const from = services.filter((s) => s.type === path[0]);
+        const to = services.filter((s) => s.type === path[1]);
+
+        return from.some((src) =>
+            to.some((tgt) => {
+                const conn = connections.find((c) => c.source.serviceId === src.id && c.target.serviceId === tgt.id);
+                if (!conn) return false;
+                const actual = [...(conn.filter?.methods ?? [])].sort();
+                const required = [...requiredMethods].sort();
+                return actual.length === required.length && actual.every((m, i) => m === required[i]);
+            }),
+        );
     }
 
     private resolvePathExists(path: ServiceType[]): boolean {
