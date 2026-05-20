@@ -19,12 +19,13 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-1',
         name: 'Hello, Backend',
-        description: 'Build a proper backend: connect Origin → REST → Database.',
+        description: 'Requests are piling up with nowhere to go. Build your first backend.',
         briefing:
-            'Your first architecture! An Origin is sending 25 requests per second. ' +
-            'You have one REST Service and one Database to place. Build the pipeline: ' +
-            'connect Origin → REST Service → Database. ' +
-            'Each star guides you through the next step.',
+            'The Origin on your board generates traffic from the outside world. ' +
+            'A REST Service handles your business logic. ' +
+            'A Database stores what needs to persist. ' +
+            'Wire them together and watch the system come to life. ' +
+            'The objectives panel on the left will guide you.',
         services: [{ type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true }],
         connections: [],
         traffic: [
