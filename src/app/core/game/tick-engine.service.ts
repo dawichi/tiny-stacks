@@ -115,6 +115,8 @@ export class TickEngineService {
     private _failedCount = 0;
     private _latencyWindow: number[] = [];
     private _throughputTimestamps: number[] = [];
+    /** Accumulated simulated time in ms — used for throughput window instead of wall-clock */
+    private _simTimeMs = 0;
 
     // Cache state
     private cacheContents = new Map<string, Set<string>>();
@@ -187,8 +189,8 @@ export class TickEngineService {
     // ── Computed: global simulation metrics ────────────────────────────
     readonly metrics = computed<SimMetrics>(() => {
         this._metricsVersion();
-        const now = performance.now();
-        const recentTimestamps = this._throughputTimestamps.filter((t) => now - t < THROUGHPUT_WINDOW_MS);
+        const simNow = this._simTimeMs;
+        const recentTimestamps = this._throughputTimestamps.filter((t) => simNow - t < THROUGHPUT_WINDOW_MS);
         const throughput = recentTimestamps.length > 0 ? (recentTimestamps.length / THROUGHPUT_WINDOW_MS) * 1000 : 0;
         const avgLatency =
             this._latencyWindow.length > 0
@@ -220,10 +222,14 @@ export class TickEngineService {
     start(): void {
         if (this.running()) return;
         this.running.set(true);
-        this.tickCount = 0;
-        this.spawnAccumulators.clear();
         this.resetMetrics();
         this.intervalId = setInterval(() => this.tick(), TICK_MS);
+    }
+
+    /** Execute a single tick synchronously with a given simulated delta — for testing. */
+    tickOnce(simDeltaMs: number): void {
+        this.tickCount++;
+        this.processSimulation(simDeltaMs);
     }
 
     /**
@@ -286,6 +292,9 @@ export class TickEngineService {
         this._failedPackets.set([]);
         this.cacheContents.clear();
         this._cacheStats.clear();
+        this.tickCount = 0;
+        this.requestCounter = 0;
+        this.spawnAccumulators.clear();
         this.resetMetrics();
     }
 
@@ -295,12 +304,13 @@ export class TickEngineService {
         this._failedCount = 0;
         this._latencyWindow = [];
         this._throughputTimestamps = [];
+        this._simTimeMs = 0;
         this._metricsVersion.set(0);
     }
 
     private recordCompletion(latency: number): void {
         this._completedCount++;
-        this._throughputTimestamps.push(performance.now());
+        this._throughputTimestamps.push(this._simTimeMs);
         this._latencyWindow.push(latency);
         if (this._latencyWindow.length > LATENCY_WINDOW_SIZE) {
             this._latencyWindow.shift();
@@ -418,9 +428,12 @@ export class TickEngineService {
     // ── Private: Tick Loop ─────────────────────────────────────────────
     private tick(): void {
         if (!this.running()) return;
-
-        const simDelta = TICK_MS * this.speed();
         this.tickCount++;
+        this.processSimulation(TICK_MS * this.speed());
+    }
+
+    private processSimulation(simDelta: number): void {
+        this._simTimeMs += simDelta;
 
         const services = this.gameState.services();
         const connections = this.gameState.connections();

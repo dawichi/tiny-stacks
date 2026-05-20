@@ -4,7 +4,13 @@ import type { ConnectionFilter, TrafficPattern } from '../game/sim-types';
 // ── Win Condition Types ──────────────────────────────────────────────
 
 /** Metric sources that win conditions can reference */
-export type ConditionMetric = 'throughput' | 'errorRate' | 'avgLatency' | 'totalCompleted' | 'serviceCount';
+export type ConditionMetric =
+    | 'throughput'
+    | 'errorRate'
+    | 'avgLatency'
+    | 'totalCompleted'
+    | 'serviceCount'
+    | 'pathExists';
 
 export type ConditionOperator = '>=' | '<=' | '<' | '>' | '==';
 
@@ -15,6 +21,8 @@ export interface WinCondition {
     value: number;
     sustainMs?: number; // must hold true for this duration (default 0 = instant)
     label: string; // human-readable, e.g. "Handle 50 req/s for 10s"
+    /** Required for metric === 'pathExists': ordered list of service types forming the expected chain */
+    path?: ServiceType[];
 }
 
 /** Star tier — all conditions must pass to earn this star */
@@ -59,7 +67,8 @@ export interface ChallengeDefinition {
     services: ChallengeService[];
     connections: ChallengeConnection[];
     traffic: ChallengeTraffic[];
-    availableServiceTypes: ServiceType[];
+    /** Services the player can place, with per-type quantity limits */
+    availableResources: { type: ServiceType; count: number }[];
     stars: [StarTier, StarTier, StarTier];
     gridSize?: { width: number; height: number };
 }

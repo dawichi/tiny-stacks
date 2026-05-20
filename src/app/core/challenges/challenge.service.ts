@@ -1,15 +1,10 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { GameStateService } from '../game/game-state.service';
+import type { ServiceType } from '../game/service-types.config';
 import type { TrafficPattern } from '../game/sim-types';
 import { TickEngineService } from '../game/tick-engine.service';
 import { StorageKeys, StorageService } from '../storage/storage.service';
-import type {
-    ChallengeDefinition,
-    ChallengeProgress,
-    ConditionMetric,
-    ConditionOperator,
-    WinCondition,
-} from './challenge.model';
+import type { ChallengeDefinition, ChallengeProgress, ConditionOperator, WinCondition } from './challenge.model';
 import { CHALLENGE_DEFINITIONS } from './challenge-definitions';
 
 @Injectable({ providedIn: 'root' })
@@ -190,7 +185,7 @@ export class ChallengeService {
     }
 
     private evaluateCondition(cond: WinCondition, tierIndex: number, simDelta: number): boolean {
-        const currentValue = this.resolveMetric(cond.metric);
+        const currentValue = this.resolveMetric(cond);
         const passes = this.compare(currentValue, cond.operator, cond.value);
 
         const key = `${tierIndex}:${cond.metric}:${cond.operator}:${cond.value}`;
@@ -208,9 +203,9 @@ export class ChallengeService {
         return false;
     }
 
-    private resolveMetric(metric: ConditionMetric): number {
+    private resolveMetric(cond: WinCondition): number {
         const m = this.tickEngine.metrics();
-        switch (metric) {
+        switch (cond.metric) {
             case 'throughput':
                 return m.throughput;
             case 'avgLatency':
@@ -223,9 +218,31 @@ export class ChallengeService {
                 const total = m.totalCompleted + m.totalFailed;
                 return total > 0 ? (m.totalFailed / total) * 100 : 0;
             }
+            case 'pathExists':
+                return this.resolvePathExists(cond.path ?? []) ? 1 : 0;
             default:
                 return 0;
         }
+    }
+
+    private resolvePathExists(path: ServiceType[]): boolean {
+        if (path.length < 2) return true;
+        const services = this.gameState.services();
+        const connections = this.gameState.connections();
+
+        const checkPath = (serviceId: string, pathIndex: number): boolean => {
+            if (pathIndex >= path.length) return true;
+            const outgoing = connections.filter((c) => c.source.serviceId === serviceId);
+            for (const conn of outgoing) {
+                const target = services.find((s) => s.id === conn.target.serviceId);
+                if (target?.type === path[pathIndex] && checkPath(target.id, pathIndex + 1)) {
+                    return true;
+                }
+            }
+            return false;
+        };
+
+        return services.filter((s) => s.type === path[0]).some((s) => checkPath(s.id, 1));
     }
 
     private compare(value: number, operator: ConditionOperator, target: number): boolean {

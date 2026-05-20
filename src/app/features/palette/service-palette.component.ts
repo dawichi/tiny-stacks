@@ -8,6 +8,11 @@ import {
     type ServiceTypeConfig,
 } from '../../core/game/service-types.config';
 
+interface PaletteItem {
+    type: ServiceType;
+    remaining: number; // Infinity = unlimited (sandbox)
+}
+
 @Component({
     selector: 'app-service-palette',
     standalone: true,
@@ -36,35 +41,47 @@ import {
           </h3>
 
           <div class="flex flex-col gap-1.5">
-            @for (serviceType of serviceTypes(); track serviceType) {
+            @for (item of paletteItems(); track item.type) {
               <div
-                class="service-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg cursor-grab
-                       hover:bg-white/60 transition-colors duration-150 select-none"
-                draggable="true"
-                (dragstart)="onDragStart($event, serviceType)"
+                class="service-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150 select-none"
+                [class.cursor-grab]="item.remaining > 0"
+                [class.cursor-not-allowed]="item.remaining <= 0"
+                [class.opacity-40]="item.remaining <= 0"
+                [class.hover:bg-white/60]="item.remaining > 0"
+                [draggable]="item.remaining > 0"
+                (dragstart)="onDragStart($event, item.type, item.remaining)"
                 (dragend)="onDragEnd()"
               >
                 <!-- Icon -->
                 <div
                   class="w-8 h-8 rounded-md flex items-center justify-center shrink-0"
-                  [style.background-color]="getConfig(serviceType).color"
+                  [style.background-color]="getConfig(item.type).color"
                 >
                   <lucide-icon
-                    [img]="getIcon(serviceType)"
+                    [img]="getIcon(item.type)"
                     [size]="16"
                     class="text-white/90"
                   />
                 </div>
 
-                <!-- Name & size -->
-                <div class="flex flex-col min-w-0">
+                <!-- Name, size & remaining count -->
+                <div class="flex flex-col min-w-0 flex-1">
                   <span class="text-sm font-medium text-slate-700 truncate">
-                    {{ getConfig(serviceType).name }}
+                    {{ getConfig(item.type).name }}
                   </span>
                   <span class="text-[10px] text-slate-400">
-                    {{ getConfig(serviceType).gridWidth }}&times;{{ getConfig(serviceType).gridHeight }}
+                    {{ getConfig(item.type).gridWidth }}&times;{{ getConfig(item.type).gridHeight }}
                   </span>
                 </div>
+
+                @if (item.remaining !== Infinity) {
+                  <span class="text-[10px] font-semibold shrink-0"
+                    [class.text-slate-400]="item.remaining > 0"
+                    [class.text-red-400]="item.remaining <= 0"
+                  >
+                    {{ item.remaining }} left
+                  </span>
+                }
               </div>
             }
           </div>
@@ -100,14 +117,25 @@ export class ServicePaletteComponent {
     private readonly gameState = inject(GameStateService);
 
     // ── Inputs ────────────────────────────────────────────────────────
-    readonly allowedTypes = input<ServiceType[] | null>(null);
+    /** Challenge resource limits. null = sandbox mode (all types, unlimited). */
+    readonly availableResources = input<{ type: ServiceType; count: number }[] | null>(null);
 
     // ── Properties ─────────────────────────────────────────────────────
     protected readonly collapsed = signal(false);
+    protected readonly Infinity = Infinity;
 
-    protected readonly serviceTypes = computed(() => {
-        const allowed = this.allowedTypes();
-        return allowed ?? getAllServiceTypes();
+    protected readonly paletteItems = computed<PaletteItem[]>(() => {
+        const resources = this.availableResources();
+        const services = this.gameState.services();
+
+        if (resources === null) {
+            return getAllServiceTypes().map((type) => ({ type, remaining: Infinity }));
+        }
+
+        return resources.map(({ type, count }) => {
+            const placed = services.filter((s) => s.type === type).length;
+            return { type, remaining: count - placed };
+        });
     });
 
     private readonly icons = {
@@ -134,7 +162,11 @@ export class ServicePaletteComponent {
         return this.icons[iconName] || Globe;
     }
 
-    protected onDragStart(event: DragEvent, type: ServiceType): void {
+    protected onDragStart(event: DragEvent, type: ServiceType, remaining: number): void {
+        if (remaining <= 0) {
+            event.preventDefault();
+            return;
+        }
         this.gameState.draggingType.set(type);
         event.dataTransfer?.setData('application/service-type', type);
         if (event.dataTransfer) {

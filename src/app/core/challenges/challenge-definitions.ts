@@ -22,10 +22,9 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         description: 'Build a proper backend: connect Origin → REST → Database.',
         briefing:
             'Your first architecture! An Origin is sending 25 requests per second. ' +
-            'You need to build a proper backend pipeline: place a REST Service to handle ' +
-            'business logic, and a Database for persistent storage. Connect them in order: ' +
-            'Origin → REST Service → Database. The REST Service processes requests faster ' +
-            'than the Database, so it acts as your front-line handler.',
+            'You have one REST Service and one Database to place. Build the pipeline: ' +
+            'connect Origin → REST Service → Database. ' +
+            'Each star guides you through the next step.',
         services: [{ type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true }],
         connections: [],
         traffic: [
@@ -42,39 +41,51 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 },
             },
         ],
-        availableServiceTypes: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
+        availableResources: [
+            { type: ServiceType.REST_SERVICE, count: 1 },
+            { type: ServiceType.DATABASE, count: 1 },
+        ],
         stars: [
             {
                 conditions: [
                     {
-                        metric: 'throughput',
+                        metric: 'pathExists',
                         operator: '>=',
-                        value: 15,
-                        sustainMs: 10000,
-                        label: 'Handle 15 req/s for 10s',
-                    },
-                ],
-            },
-            {
-                conditions: [
-                    {
-                        metric: 'avgLatency',
-                        operator: '<=',
-                        value: 400,
-                        sustainMs: 10000,
-                        label: 'Avg latency ≤ 400ms for 10s',
-                    },
-                ],
-            },
-            {
-                conditions: [
-                    { metric: 'errorRate', operator: '<=', value: 0, sustainMs: 15000, label: 'Zero errors for 15s' },
-                    {
-                        metric: 'serviceCount',
-                        operator: '>=',
-                        value: 3,
+                        value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
                         sustainMs: 0,
-                        label: 'Use both REST + Database',
+                        label: 'Connect Origin → REST Service',
+                    },
+                ],
+            },
+            {
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Connect REST Service → Database',
+                    },
+                ],
+            },
+            {
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Full pipeline connected',
+                    },
+                    {
+                        metric: 'errorRate',
+                        operator: '<=',
+                        value: 0,
+                        sustainMs: 5000,
+                        label: 'Zero errors for 5s',
                     },
                 ],
             },
@@ -120,16 +131,17 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 },
             },
         ],
-        availableServiceTypes: [ServiceType.CACHE],
+        availableResources: [{ type: ServiceType.CACHE, count: 1 }],
         stars: [
             {
                 conditions: [
                     {
-                        metric: 'throughput',
+                        metric: 'pathExists',
                         operator: '>=',
-                        value: 20,
-                        sustainMs: 10000,
-                        label: 'Handle 20 req/s for 10s',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                        label: 'Route REST → Cache → Database',
                     },
                 ],
             },
@@ -146,7 +158,13 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             },
             {
                 conditions: [
-                    { metric: 'errorRate', operator: '<=', value: 0, sustainMs: 15000, label: 'Zero errors for 15s' },
+                    {
+                        metric: 'errorRate',
+                        operator: '<=',
+                        value: 0,
+                        sustainMs: 15000,
+                        label: 'Zero errors for 15s',
+                    },
                 ],
             },
         ],
@@ -188,8 +206,23 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 },
             },
         ],
-        availableServiceTypes: [ServiceType.REST_SERVICE, ServiceType.LOAD_BALANCER],
+        availableResources: [
+            { type: ServiceType.REST_SERVICE, count: 3 },
+            { type: ServiceType.LOAD_BALANCER, count: 1 },
+        ],
         stars: [
+            {
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.LOAD_BALANCER, ServiceType.REST_SERVICE],
+                        sustainMs: 0,
+                        label: 'Route traffic through a Load Balancer',
+                    },
+                ],
+            },
             {
                 conditions: [
                     {
@@ -204,17 +237,12 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             {
                 conditions: [
                     {
-                        metric: 'avgLatency',
+                        metric: 'errorRate',
                         operator: '<=',
-                        value: 300,
-                        sustainMs: 10000,
-                        label: 'Avg latency ≤ 300ms for 10s',
+                        value: 0,
+                        sustainMs: 15000,
+                        label: 'Zero errors for 15s',
                     },
-                ],
-            },
-            {
-                conditions: [
-                    { metric: 'errorRate', operator: '<=', value: 0, sustainMs: 15000, label: 'Zero errors for 15s' },
                 ],
             },
         ],

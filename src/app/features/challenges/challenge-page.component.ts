@@ -45,7 +45,7 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
         <app-game-board />
       </div>
 
-      <app-service-palette [allowedTypes]="allowedTypes()" />
+      <app-service-palette [availableResources]="allowedResources()" />
       <app-service-inspector />
 
       <!-- Briefing overlay -->
@@ -175,8 +175,8 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
     protected readonly challenge = this.challengeService.activeChallenge;
     protected readonly starStatus = this.challengeService.starStatus;
 
-    protected readonly allowedTypes = computed(() => {
-        return this.challenge()?.availableServiceTypes ?? null;
+    protected readonly allowedResources = computed(() => {
+        return this.challenge()?.availableResources ?? null;
     });
 
     protected readonly starsEarned = computed(() => {
@@ -222,9 +222,9 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
             }
         }
 
-        // Poll star status for victory (star 1 earned = victory)
+        // Poll star status for victory (all stars earned = victory)
         this.victoryCheckInterval = setInterval(() => {
-            if (this.starStatus()[0] && !this.showVictory() && !this.showBriefing()) {
+            if (this.starStatus().every(Boolean) && !this.showVictory() && !this.showBriefing()) {
                 this.showVictory.set(true);
                 this.tickEngine.stop();
                 this.challengeService.saveProgress();
