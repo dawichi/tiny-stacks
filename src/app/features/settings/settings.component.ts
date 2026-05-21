@@ -1,6 +1,6 @@
 import { Component, inject, signal } from '@angular/core';
 import { LucideAngularModule, Settings, X } from 'lucide-angular';
-import { StorageService } from '../../core/storage/storage.service';
+import { StorageKeys, StorageService } from '../../core/storage/storage.service';
 
 @Component({
     selector: 'app-settings',
@@ -22,7 +22,18 @@ import { StorageService } from '../../core/storage/storage.service';
                     </div>
 
                     <div class="modal-body">
-                        <p class="section-label">Danger Zone</p>
+                        <p class="section-label dev-label">Dev tools</p>
+                        <div class="dev-row">
+                            <div>
+                                <p class="danger-title">Skip tutorial</p>
+                                <p class="danger-desc">Marks tutorial complete and unlocks Sandbox + Challenges.</p>
+                            </div>
+                            <div class="danger-actions">
+                                <button class="btn-dev" (click)="skipTutorial()">Unlock all</button>
+                            </div>
+                        </div>
+
+                        <p class="section-label" style="margin-top: 1rem">Danger Zone</p>
                         <div class="danger-row">
                             <div>
                                 <p class="danger-title">Reset all progress</p>
@@ -135,6 +146,36 @@ import { StorageService } from '../../core/storage/storage.service';
             color: #ef4444;
             margin: 0 0 0.625rem;
         }
+        .dev-label {
+            color: #3b82f6;
+        }
+
+        .dev-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            padding: 0.875rem 1rem;
+            border: 1px solid #bfdbfe;
+            border-radius: 0.5rem;
+            background: #eff6ff;
+        }
+
+        .btn-dev {
+            flex-shrink: 0;
+            padding: 0.375rem 0.875rem;
+            border-radius: 0.375rem;
+            border: 1px solid #93c5fd;
+            background: white;
+            color: #3b82f6;
+            font-size: 0.8rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 150ms ease, border-color 150ms ease;
+        }
+        .btn-dev:hover {
+            background: #dbeafe;
+            border-color: #3b82f6;
+        }
 
         .danger-row {
             display: flex;
@@ -232,6 +273,11 @@ export class SettingsComponent {
     protected close(): void {
         this.open.set(false);
         this.confirming.set(false);
+    }
+
+    protected skipTutorial(): void {
+        this.storage.setItem(StorageKeys.TUTORIAL_COMPLETE, true);
+        window.location.href = '/';
     }
 
     protected reset(): void {
