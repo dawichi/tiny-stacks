@@ -35,7 +35,7 @@ Reference for all `position: fixed` UI elements. Check this before adding new pa
 | Palette | `app-service-palette` | `bottom-6 left-6` | 50 | auto | Tutorial, Sandbox, Challenges |
 | Inspector | `app-service-inspector` | `right-6 top-1/2 -translate-y-1/2` | 50 | w-64 (256px) | Tutorial, Sandbox, Challenges |
 | Settings button | `app-settings` (via `app.ts`) | `bottom-1 right-1` | 50 | 36px | All screens |
-| Tutorial step panel | inline in `tutorial-page.component.html` | `top-6 left-6` | 50 | w-72 (288px) | Tutorial only |
+| Tutorial step panel | inline in `tutorial-page.component.html` | `left-6 top-1/2 -translate-y-1/2` | 50 | w-72 (288px) | Tutorial only |
 | Challenges objectives | inline in `challenge-page.component.html` | `top-6 left-6` | 50 | w-64 (256px) | Challenges only |
 | Star toasts | inline in `challenge-page.component.html` | `bottom-6 right-72` | 90 | dynamic | Challenges only |
 | Tutorial celebration | inline in `tutorial-page.component.html` | `inset-0` | 100 | full screen | Tutorial only |
@@ -45,7 +45,7 @@ Reference for all `position: fixed` UI elements. Check this before adding new pa
 
 ## Design Rules
 
-- **Top-left** — page-specific guidance panels (tutorial steps, challenge objectives). One per screen.
+- **Left-center** — tutorial step panel only (`left-6 top-1/2 -translate-y-1/2`). Mirrors the inspector on the right.
 - **Top-right** — reserved / free. Do not place persistent panels here (inspector owns the right rail).
 - **Right-center** — inspector only. Always `right-6 top-1/2 -translate-y-1/2 w-64`.
 - **Bottom-left** — palette only.
