@@ -90,7 +90,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
         <circle r="4.5" fill="#FF8B8B"><animateMotion dur="7s" repeatCount="indefinite" begin="3.5s"><mpath href="#p-ga"/></animateMotion></circle>
       </svg>
 
-      <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
+      <div class="relative z-10 flex flex-col items-center justify-center min-h-screen px-8 pt-8 pb-32">
         <header class="text-center mb-12">
           <div class="flex justify-center mb-4">
             <img src="logo.svg" width="56" height="56" alt="tiny-stacks logo">
