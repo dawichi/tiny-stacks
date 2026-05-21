@@ -6,6 +6,7 @@ import { TickEngineService } from '../../core/game/tick-engine.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
+import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
 
 interface StarToast {
     id: number;
@@ -15,7 +16,14 @@ interface StarToast {
 @Component({
     selector: 'app-challenge-page',
     standalone: true,
-    imports: [RouterLink, LucideAngularModule, GameBoardComponent, ServicePaletteComponent, ServiceInspectorComponent],
+    imports: [
+        RouterLink,
+        LucideAngularModule,
+        GameBoardComponent,
+        ServicePaletteComponent,
+        ServiceInspectorComponent,
+        ScreenGuardComponent,
+    ],
     templateUrl: './challenge-page.component.html',
     styles: [
         `

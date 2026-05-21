@@ -4,11 +4,19 @@ import { ArrowLeft, LucideAngularModule } from 'lucide-angular';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
+import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
 
 @Component({
     selector: 'app-sandbox-page',
     standalone: true,
-    imports: [RouterLink, LucideAngularModule, GameBoardComponent, ServicePaletteComponent, ServiceInspectorComponent],
+    imports: [
+        RouterLink,
+        LucideAngularModule,
+        GameBoardComponent,
+        ServicePaletteComponent,
+        ServiceInspectorComponent,
+        ScreenGuardComponent,
+    ],
     template: `
     <main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
       <header class="max-w-4xl mx-auto mb-6 flex items-center gap-4">
@@ -27,6 +35,7 @@ import { ServicePaletteComponent } from '../palette/service-palette.component';
 
       <app-service-palette />
       <app-service-inspector />
+      <app-screen-guard />
     </main>
   `,
 })

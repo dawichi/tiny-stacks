@@ -5,11 +5,19 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
+import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
 
 @Component({
     selector: 'app-tutorial-page',
     standalone: true,
-    imports: [RouterLink, LucideAngularModule, GameBoardComponent, ServicePaletteComponent, ServiceInspectorComponent],
+    imports: [
+        RouterLink,
+        LucideAngularModule,
+        GameBoardComponent,
+        ServicePaletteComponent,
+        ServiceInspectorComponent,
+        ScreenGuardComponent,
+    ],
     templateUrl: './tutorial-page.component.html',
     styles: [
         `
