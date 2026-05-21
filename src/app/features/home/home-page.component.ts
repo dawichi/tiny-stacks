@@ -92,6 +92,9 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
 
       <div class="relative z-10 flex flex-col items-center justify-center min-h-screen p-8">
         <header class="text-center mb-12">
+          <div class="flex justify-center mb-4">
+            <img src="logo.svg" width="56" height="56" alt="tiny-stacks logo">
+          </div>
           <h1 class="text-5xl font-bold text-slate-800 tracking-tight mb-3">tiny-stacks</h1>
           <p class="text-lg text-slate-500 leading-relaxed">
             Place services. Connect them. Watch the traffic flow.

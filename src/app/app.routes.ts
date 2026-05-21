@@ -4,7 +4,6 @@ import { ChallengePageComponent } from './features/challenges/challenge-page.com
 import { ChallengesPageComponent } from './features/challenges/challenges-page.component';
 import { HomePageComponent } from './features/home/home-page.component';
 import { SandboxPageComponent } from './features/sandbox/sandbox-page.component';
-import { TestLogoPageComponent } from './features/test-logo/test-logo-page.component';
 import { TutorialPageComponent } from './features/tutorial/tutorial-page.component';
 
 export const routes: Routes = [
@@ -13,6 +12,5 @@ export const routes: Routes = [
     { path: 'sandbox', canActivate: [tutorialCompleteGuard], component: SandboxPageComponent },
     { path: 'challenges', canActivate: [tutorialCompleteGuard], component: ChallengesPageComponent },
     { path: 'challenges/:id', canActivate: [tutorialCompleteGuard], component: ChallengePageComponent },
-    { path: 'test-logo', component: TestLogoPageComponent },
     { path: '**', redirectTo: '' },
 ];
