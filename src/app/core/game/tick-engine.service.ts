@@ -408,6 +408,37 @@ export class TickEngineService {
         }
     }
 
+    // ── Private: MQ Logic (async ACK) ────────────────────────────────
+    private handleMqCompletion(
+        req: SimRequest,
+        mqServiceId: string,
+        connections: ReturnType<GameStateService['connections']>,
+        requests: SimRequest[],
+    ): void {
+        // ACK: original request starts its response immediately (producer unblocked)
+        this.beginResponse(req);
+
+        // Async forward: spawn a fire-and-forget request that continues downstream
+        const outgoing = connections.filter((c) => c.source.serviceId === mqServiceId);
+        const conn = this.pickConnection(outgoing, req.method);
+        if (conn) {
+            requests.push({
+                id: `req_${this.requestCounter++}`,
+                method: req.method,
+                resource: req.resource,
+                status: 'traveling',
+                direction: 'forward',
+                currentServiceId: mqServiceId,
+                originServiceId: mqServiceId,
+                connectionId: conn.id,
+                travelProgress: 0,
+                spawnedAtTick: this.tickCount,
+                totalLatency: 0,
+                routeHistory: [conn.id],
+            });
+        }
+    }
+
     // ── Private: Filter-Aware Routing ──────────────────────────────────
     private pickConnection(outgoing: Connection[], method: RequestMethod): Connection | null {
         const eligible = outgoing.filter((c) => {
@@ -576,6 +607,12 @@ export class TickEngineService {
                 // Cache-specific behavior
                 if (svc.type === ServiceType.CACHE && req.direction === 'forward') {
                     this.handleCacheCompletion(req, svc.id, connections);
+                    continue;
+                }
+
+                // MQ-specific behavior: ACK immediately, forward async
+                if (svc.type === ServiceType.MESSAGE_QUEUE && req.direction === 'forward') {
+                    this.handleMqCompletion(req, svc.id, connections, requests);
                     continue;
                 }
 

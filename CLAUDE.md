@@ -101,7 +101,8 @@ All simulation logic lives in `tick-engine.service.ts` (60 tps, configurable 0.5
 - **Response paths:** Requests track `routeHistory` (connection IDs). At terminal services, direction flips to `'response'` — packets travel back in reverse, skipping queues.
 - **Queue overflow:** Request fails when `queue + processing >= queueSize + maxConcurrency`. Triggers red pop animation.
 - **Cache:** GET + cached resource = HIT (instant). GET + miss = forwards to DB and caches result. POST/PUT/DELETE invalidate the resource.
-- **Metrics:** `throughput`, `avgLatency`, `totalCompleted`, `totalFailed` — calculated over a rolling 5s window using simulated time (`_simTimeMs`, not `performance.now()`, so tests are deterministic).
+- **Message Queue:** Async ACK semantics — when a forward request finishes processing at an MQ, the original request begins its response immediately (producer unblocked). A separate fire-and-forget request is spawned to continue downstream. This models real queue decoupling: the producer doesn't wait for the consumer.
+- **Metrics:** `throughput`, `avgLatency`, `totalCompleted`, `totalFailed` — calculated over a rolling 3s window using simulated time (`_simTimeMs`, not `performance.now()`, so tests are deterministic).
 - **Testing:** `tickOnce(simDeltaMs)` drives the simulation synchronously. Shared helpers in `challenge-test-helpers.ts`.
 - Types: `SimRequest`, `TrafficPattern`, `ConnectionFilter`, `CacheStats` in `sim-types.ts`.
 
@@ -311,6 +312,12 @@ Do these at the end of a long session or every ~10 commits:
 2. **Insight Pills** — Inspector "About" section + discovery toasts; `InsightService` + `insight-definitions.ts` in `core/insights/`
 3. Service configuration editing (processing time, queue size per service)
 4. Batch rendering at high throughput (one ball = N requests)
+
+### Simulation Engine Improvements
+- **Load Balancer routing strategies** — currently LB uses the same weighted-random `pickConnection()` as all services. Add LB-specific algorithms (round-robin, least-connections) so players can learn the difference. Low priority since current challenges test LB *topology*, not algorithm.
+- **`filteredPathExists` multi-hop support** — `resolveFilteredPathExists` in `challenge.service.ts` only checks the first hop's filter. Extend to verify filters along an entire path chain if future challenges need it.
+- **Immutable tick processing** — `SimRequest` objects are mutated in place during `processSimulation`. No bug (ticks are synchronous), but prevents replay/serialization of mid-tick state. Revisit if adding time-travel debugging or multiplayer.
+- **Queue sync optimization** — `requests.includes(r)` in runtime state cleanup is O(n×m). Replace with a Set-based lookup if request volume grows past ~200 active requests.
 
 ### Future
 - Responsive grid (zoom/pan)
