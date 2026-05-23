@@ -9,7 +9,7 @@ import { mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-hel
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('Level 2: Cache Layer — star evaluation', () => {
+describe('Level 2: Cache Layer:star evaluation', () => {
     let challengeService: ChallengeService;
     let tickEngine: TickEngineService;
     let gameState: GameStateService;

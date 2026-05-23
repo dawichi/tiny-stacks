@@ -8,7 +8,7 @@ import { TutorialService } from './tutorial.service';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('TutorialService — step detection', () => {
+describe('TutorialService:step detection', () => {
     let tutorial: TutorialService;
     let gameState: GameStateService;
 
@@ -73,14 +73,14 @@ describe('TutorialService — step detection', () => {
 
     // ── Step 1: place Cache ──────────────────────────────────────────────
 
-    describe('step 1 — place Cache', () => {
+    describe('step 1:place Cache', () => {
         it('completes and advances to index 1 when Cache is placed', () => {
             placeCache();
             expect(tutorial.step1()).toBe(true);
             expect(tutorial.currentStepIndex()).toBe(1);
         });
 
-        it('stops at index 1 — does not auto-advance without a connection', () => {
+        it('stops at index 1:does not auto-advance without a connection', () => {
             placeCache();
             expect(tutorial.step2()).toBe(false);
         });
@@ -88,7 +88,7 @@ describe('TutorialService — step detection', () => {
 
     // ── Step 2: connect REST → Cache ─────────────────────────────────────
 
-    describe('step 2 — connect REST → Cache', () => {
+    describe('step 2:connect REST → Cache', () => {
         beforeEach(() => placeCache());
 
         it('completes and advances to index 2 when REST output connects to Cache input', () => {
@@ -97,7 +97,7 @@ describe('TutorialService — step detection', () => {
             expect(tutorial.currentStepIndex()).toBe(2);
         });
 
-        it('stops at index 2 — does not auto-advance without Cache→DB', () => {
+        it('stops at index 2:does not auto-advance without Cache→DB', () => {
             connectRestToCache();
             expect(tutorial.step3()).toBe(false);
         });
@@ -111,7 +111,7 @@ describe('TutorialService — step detection', () => {
 
     // ── Step 3: connect Cache → Database ────────────────────────────────
 
-    describe('step 3 — connect Cache → Database', () => {
+    describe('step 3:connect Cache → Database', () => {
         beforeEach(() => {
             placeCache();
             connectRestToCache();
@@ -123,7 +123,7 @@ describe('TutorialService — step detection', () => {
             expect(tutorial.currentStepIndex()).toBe(3);
         });
 
-        it('stops at index 3 — bypass still exists, step 4 not yet done', () => {
+        it('stops at index 3:bypass still exists, step 4 not yet done', () => {
             connectCacheToDB();
             expect(tutorial.step4()).toBe(false);
         });
@@ -131,7 +131,7 @@ describe('TutorialService — step detection', () => {
 
     // ── Step 4: remove REST → Database bypass ────────────────────────────
 
-    describe('step 4 — remove REST → Database bypass', () => {
+    describe('step 4:remove REST → Database bypass', () => {
         beforeEach(() => {
             placeCache();
             connectRestToCache();
@@ -163,7 +163,7 @@ describe('TutorialService — step detection', () => {
 
     // ── Step 5: GET-only route rule on REST → Cache ──────────────────────
 
-    describe('step 5 — set GET-only route rule on REST → Cache', () => {
+    describe('step 5:set GET-only route rule on REST → Cache', () => {
         beforeEach(() => {
             placeCache();
             connectRestToCache();
@@ -207,7 +207,7 @@ describe('TutorialService — step detection', () => {
             placeCache();
             connectRestToCache();
             connectCacheToDB();
-            // REST→DB still exists — step 4 not done
+            // REST→DB still exists:step 4 not done
             setGetOnlyOnRestToCache();
             expect(tutorial.step5()).toBe(false);
         });

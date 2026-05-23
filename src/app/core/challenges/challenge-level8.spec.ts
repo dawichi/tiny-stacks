@@ -8,7 +8,7 @@ import { mustFind, mustPlace, runTicks } from './challenge-test-helpers';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('Level 8: Full Stack — star evaluation', () => {
+describe('Level 8: Full Stack:star evaluation', () => {
     let challengeService: ChallengeService;
     let tickEngine: TickEngineService;
     let gameState: GameStateService;

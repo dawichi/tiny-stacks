@@ -9,7 +9,7 @@ import { mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-hel
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('Level 4: Write Buffer — star evaluation', () => {
+describe('Level 4: Write Buffer:star evaluation', () => {
     let challengeService: ChallengeService;
     let tickEngine: TickEngineService;
     let gameState: GameStateService;

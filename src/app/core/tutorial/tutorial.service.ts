@@ -18,7 +18,7 @@ export class TutorialService {
     private readonly _restId = signal<string | null>(null);
     private readonly _dbId = signal<string | null>(null);
 
-    // The Cache service is player-placed — detect by type
+    // The Cache service is player-placed, detect by type
     private readonly _cacheId = computed(
         () => this.gameState.services().find((s) => s.type === ServiceType.CACHE)?.id ?? null,
     );

@@ -115,7 +115,7 @@ export class TickEngineService {
     private _failedCount = 0;
     private _latencyWindow: number[] = [];
     private _throughputTimestamps: number[] = [];
-    /** Accumulated simulated time in ms — used for throughput window instead of wall-clock */
+    /** Accumulated simulated time in ms, used for throughput window instead of wall-clock */
     private _simTimeMs = 0;
 
     // Cache state
@@ -226,7 +226,7 @@ export class TickEngineService {
         this.intervalId = setInterval(() => this.tick(), TICK_MS);
     }
 
-    /** Execute a single tick synchronously with a given simulated delta — for testing. */
+    /** Execute a single tick synchronously with a given simulated delta. For testing. */
     tickOnce(simDeltaMs: number): void {
         this.tickCount++;
         this.processSimulation(simDeltaMs);

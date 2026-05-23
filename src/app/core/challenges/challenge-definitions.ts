@@ -3,7 +3,7 @@ import { RequestMethod } from '../game/sim-types';
 import type { ChallengeDefinition } from './challenge.model';
 
 /**
- * All challenge definitions — pure data, no logic.
+ * All challenge definitions. Pure data, no logic.
  *
  * Port indices reference (from service-types.config.ts):
  *   Origin:         [0] east OUTPUT
@@ -22,19 +22,19 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         description: 'Monday morning peak. The database is drowning in repeated reads.',
         briefing:
             "It's 9am on a Monday and the analytics dashboard is lighting up. " +
-            'Your REST Service is hammering the Database with the same catalog queries — over and over. ' +
+            'Your REST Service is hammering the Database with the same catalog queries, over and over. ' +
             'Every GET for /users and /products goes all the way to disk. ' +
             'A Cache would serve the repeat reads instantly and take the pressure off. ' +
-            'Add one and route reads through it — then commit: remove the direct REST → Database shortcut once the cache path is live.',
+            'Add one and route reads through it, then commit: remove the direct REST → Database shortcut once the cache path is live.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
             { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0) — pre-drawn
+            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0) — pre-drawn; player must reroute through Cache and remove this
+            // REST(out:1) → Database(bidir:0), pre-drawn; player must reroute through Cache and remove this
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
@@ -54,7 +54,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.CACHE, count: 1 }],
         stars: [
             {
-                // ★1 — cache added in parallel: cache path exists AND direct bypass still present
+                // ★1: cache added in parallel, cache path exists AND direct bypass still present
                 label: 'Cache in the pipeline',
                 conditions: [
                     {
@@ -74,7 +74,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — committed to cache: bypass removed, all traffic through cache (even writes)
+                // ★2: committed to cache, bypass removed, all traffic through cache (even writes)
                 label: 'No direct DB access',
                 conditions: [
                     {
@@ -94,7 +94,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — optimal: reads cached (GET filter), writes skip cache entirely (write filter on REST→DB)
+                // ★3: optimal, reads cached (GET filter), writes skip cache entirely (write filter on REST→DB)
                 // Mutually exclusive with ★2: REST→DB reintroduced with a write-only filter
                 label: 'Smart read/write routing',
                 conditions: [
@@ -126,7 +126,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         description: 'Black Friday is 48 hours away. One backend will not survive the spike.',
         briefing:
             'The sale starts at midnight in two days. Traffic projections say 3× normal load. ' +
-            "One REST Service won't handle it — but you have a second one sitting idle, already wired to the Database. " +
+            "One REST Service won't handle it, but you have a second one sitting idle, already wired to the Database. " +
             'Place a Load Balancer in front of both backends, connect them up, ' +
             'then cut the direct Origin → REST shortcut. ' +
             'When the spike hits, both backends share the load instead of one dying alone.',
@@ -137,11 +137,11 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST₁(in:0) — the direct connection player must reroute
+            // Origin(out:0) → REST₁(in:0), the direct connection player must reroute
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST₁(out:1) → Database(bidir:0) — pre-wired
+            // REST₁(out:1) → Database(bidir:0), pre-wired
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
-            // REST₂(out:1) → Database(bidir:0) — pre-wired, receives no traffic yet
+            // REST₂(out:1) → Database(bidir:0), pre-wired, receives no traffic yet
             { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
@@ -162,7 +162,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.LOAD_BALANCER, count: 1 }],
         stars: [
             {
-                // ★1 — LB introduced: path through LB exists AND direct bypass still present
+                // ★1: LB introduced, path through LB exists AND direct bypass still present
                 label: 'Load Balancer connected',
                 conditions: [
                     {
@@ -187,7 +187,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — bypass removed: all traffic through LB (may route to only one REST instance)
+                // ★2: bypass removed, all traffic through LB (may route to only one REST instance)
                 label: 'Traffic centralized',
                 conditions: [
                     {
@@ -212,7 +212,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — true distribution: LB routes to BOTH REST instances, bypass removed
+                // ★3: true distribution, LB routes to BOTH REST instances, bypass removed
                 label: 'True load distribution',
                 conditions: [
                     {
@@ -245,12 +245,12 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Smart Routes',
         description: 'Reads and writes share the same path. The cache is poisoning itself.',
         briefing:
-            'Your team shipped a Cache last sprint — but forgot to set up routing rules. ' +
+            'Your team shipped a Cache last sprint, but forgot to set up routing rules. ' +
             'POST and PUT requests are flowing into it alongside GETs, poisoning the cached data with stale writes. ' +
             'Connect paths to both the Cache and the Database. ' +
             'Then click each connection and set a method filter: ' +
             'GET reads belong in the Cache, writes belong direct to the Database. ' +
-            'Route rules are how real API gateways work — nginx, Envoy, and Kong all use this pattern.',
+            'Route rules are how real API gateways work. Nginx, Envoy, and Kong all use this pattern.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
@@ -258,7 +258,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0) — pre-drawn
+            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
         ],
         traffic: [
@@ -279,7 +279,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [],
         stars: [
             {
-                // ★1 — naive solution: both paths exist, system works (filters not required yet)
+                // ★1: naive solution, both paths exist, system works (filters not required yet)
                 label: 'Both paths wired',
                 conditions: [
                     {
@@ -299,7 +299,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — reads filtered: GET filter on REST→Cache, write path to DB also connected
+                // ★2: reads filtered, GET filter on REST→Cache, write path to DB also connected
                 label: 'Reads routed to cache',
                 conditions: [
                     {
@@ -320,7 +320,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — both paths fully filtered: reads cached (GET), writes direct (POST/PUT/DELETE)
+                // ★3: both paths fully filtered, reads cached (GET), writes direct (POST/PUT/DELETE)
                 label: 'Traffic fully separated',
                 conditions: [
                     {
@@ -351,20 +351,20 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         description: 'Christmas sale just went live. Orders are flooding in 10× faster than usual.',
         briefing:
             "It's December 25th, 8am, and your on-call phone is already ringing. " +
-            'Orders are pouring in — every POST, PUT, and DELETE hitting the Database synchronously. ' +
+            'Orders are pouring in: every POST, PUT, and DELETE hitting the Database synchronously. ' +
             'The same slow DB that handles all your reads is now drowning in writes too. ' +
             'Place a Message Queue and route writes through it: the Database processes them at its own pace, ' +
             'and your REST Service stops waiting on every order confirmation. ' +
-            'The pre-drawn REST → Database path still handles reads — your job is to buffer the writes.',
+            'The pre-drawn REST → Database path still handles reads. Your job is to buffer the writes.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
             { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0) — pre-drawn
+            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0) — pre-drawn; player adds MQ path for writes
+            // REST(out:1) → Database(bidir:0), pre-drawn; player adds MQ path for writes
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
@@ -385,7 +385,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.MESSAGE_QUEUE, count: 1 }],
         stars: [
             {
-                // ★1 — MQ added but no filter: reads + writes both flow through it
+                // ★1: MQ added but no filter, reads + writes both flow through it
                 label: 'Queue connected',
                 conditions: [
                     {
@@ -398,7 +398,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — writes buffered via MQ with filter; reads still use pre-drawn REST→DB
+                // ★2: writes buffered via MQ with filter; reads still use pre-drawn REST→DB
                 label: 'Writes buffered',
                 conditions: [
                     {
@@ -419,7 +419,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — hard separation: writes only via MQ, reads only via DB (both filtered)
+                // ★3: hard separation, writes only via MQ, reads only via DB (both filtered)
                 label: 'Hard read/write separation',
                 conditions: [
                     {
@@ -449,20 +449,20 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'The Gateway',
         description: 'Security audit: backends are directly exposed. Single entry point required.',
         briefing:
-            'Your compliance review came back with a red flag: Origin connects straight to the REST Service — ' +
+            'Your compliance review came back with a red flag: Origin connects straight to the REST Service. ' +
             'no rate limiting, no auth layer, no single point of control. ' +
             'Every service is one hop from the outside world. ' +
             'Place an API Gateway and route all traffic through it, then remove the direct Origin → REST connection. ' +
-            'For full marks, also add a Cache on the read path — the audit flagged uncached repeat reads too.',
+            'For full marks, also add a Cache on the read path. The audit flagged uncached repeat reads too.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 7, gridY: 5, locked: true },
             { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0) — pre-drawn; player must reroute through GW
+            // Origin(out:0) → REST(in:0), pre-drawn; player must reroute through GW
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0) — pre-drawn
+            // REST(out:1) → Database(bidir:0), pre-drawn
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
@@ -486,7 +486,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1 — GW added but bypass still present
+                // ★1: GW added but bypass still present
                 label: 'Gateway online',
                 conditions: [
                     {
@@ -506,7 +506,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — GW is sole entry point, bypass removed
+                // ★2: GW is sole entry point, bypass removed
                 label: 'Single entry point',
                 conditions: [
                     {
@@ -526,7 +526,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — GW as sole entry AND cache on the read path
+                // ★3: GW as sole entry AND cache on the read path
                 label: 'Gateway + cache',
                 conditions: [
                     {
@@ -562,10 +562,10 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         description: 'You just got HackerNews front page. Traffic is 50× normal.',
         briefing:
             'The post went live an hour ago and your on-call is paging. ' +
-            'Two REST Services are pre-wired to the Database for writes — but Origin has no path in yet. ' +
+            'Two REST Services are pre-wired to the Database for writes, but Origin has no path in yet. ' +
             'Place a Load Balancer to split traffic across both backends, ' +
             'and a Cache to absorb the flood of repeated product reads. ' +
-            'For the cleanest architecture, make sure both backends share the Cache — and lock it to GET requests only.',
+            'For the cleanest architecture, make sure both backends share the Cache and lock it to GET requests only.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 2, locked: true },
@@ -573,9 +573,9 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             { type: ServiceType.DATABASE, gridX: 16, gridY: 5, locked: true },
         ],
         connections: [
-            // REST₁(out:1) → Database(bidir:0) — pre-wired for writes
+            // REST₁(out:1) → Database(bidir:0), pre-wired for writes
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
-            // REST₂(out:1) → Database(bidir:0) — pre-wired for writes
+            // REST₂(out:1) → Database(bidir:0), pre-wired for writes
             { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
@@ -599,7 +599,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1 — LB and Cache both in use, but only one REST connected to LB
+                // ★1: LB and Cache both in use, but only one REST connected to LB
                 label: 'Scaling with cache',
                 conditions: [
                     {
@@ -618,7 +618,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — both REST instances route through the shared Cache
+                // ★2: both REST instances route through the shared Cache
                 label: 'Both backends cached',
                 conditions: [
                     {
@@ -637,7 +637,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — both backends cached AND Cache is GET-only; writes fall through to pre-drawn REST→DB
+                // ★3: both backends cached AND Cache is GET-only; writes fall through to pre-drawn REST→DB
                 label: 'Cache GET-only',
                 conditions: [
                     {
@@ -672,7 +672,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Two Paths',
         description: 'Reads are slow. Writes are unreliable. They are fighting over the same resources.',
         briefing:
-            'Your two REST Services are receiving all traffic with no separation — reads and writes mixed together. ' +
+            'Your two REST Services are receiving all traffic with no separation, reads and writes mixed together. ' +
             "GETs are slow because they're queued behind heavy write operations. " +
             "POSTs are unreliable because they're sharing a path that wasn't designed for them. " +
             'Build a Cache path on one side for reads, and a Message Queue path on the other for writes. ' +
@@ -685,9 +685,9 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
             { type: ServiceType.DATABASE, gridX: 16, gridY: 5, locked: true },
         ],
         connections: [
-            // Origin(out:0) → REST₁(in:0) — pre-drawn, unruled
+            // Origin(out:0) → REST₁(in:0), pre-drawn, unruled
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // Origin(out:0) → REST₂(in:0) — pre-drawn, unruled
+            // Origin(out:0) → REST₂(in:0), pre-drawn, unruled
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
@@ -711,7 +711,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1 — both downstream paths built, no route rules anywhere
+                // ★1: both downstream paths built, no route rules anywhere
                 label: 'Both paths built',
                 conditions: [
                     {
@@ -731,7 +731,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — origin connections filtered to split reads and writes at the source
+                // ★2: origin connections filtered to split reads and writes at the source
                 label: 'Origin traffic split',
                 conditions: [
                     {
@@ -767,7 +767,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — double-ruled: origin and service level both filtered
+                // ★3: double-ruled, origin and service level both filtered
                 label: 'Double-ruled paths',
                 conditions: [
                     {
@@ -813,7 +813,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Full Stack',
         description: 'Greenfield project. You have an Origin, a Database, and a blank canvas.',
         briefing:
-            'New company, new system — the investors want a demo in an hour. ' +
+            'New company, new system. The investors want a demo in an hour. ' +
             'All you have is an Origin generating traffic and a Database to persist it. ' +
             'The palette has everything you need: a Gateway for access control, a Load Balancer for scale, ' +
             'two REST Services for business logic, a Cache for read performance, and a Message Queue for write resilience. ' +
@@ -847,7 +847,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1 — full pipeline exists: Origin → GW → LB → REST → DB
+                // ★1: full pipeline exists, Origin → GW → LB → REST → DB
                 label: 'Full pipeline',
                 conditions: [
                     {
@@ -866,7 +866,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2 — both backends active AND Cache on at least one read path
+                // ★2: both backends active AND Cache on at least one read path
                 // pathExists stops at REST (not REST→DB) because backends may route through Cache/MQ
                 label: 'Both backends + optimisation',
                 conditions: [
@@ -892,7 +892,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3 — full production: both backends, Cache AND MQ both in use
+                // ★3: full production, both backends, Cache AND MQ both in use
                 label: 'Production ready',
                 conditions: [
                     {

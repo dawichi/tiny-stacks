@@ -16,7 +16,7 @@ export type ConditionMetric =
 
 export type ConditionOperator = '>=' | '<=' | '<' | '>' | '==';
 
-/** A single win condition — purely declarative, JSON-serializable */
+/** A single win condition:purely declarative, JSON-serializable */
 export interface WinCondition {
     metric: ConditionMetric;
     operator: ConditionOperator;
@@ -28,7 +28,7 @@ export interface WinCondition {
     requiredMethods?: RequestMethod[];
 }
 
-/** Star tier — all conditions must pass to earn this star */
+/** Star tier:all conditions must pass to earn this star */
 export interface StarTier {
     label: string; // achievement name shown to the player
     conditions: WinCondition[];
@@ -62,7 +62,7 @@ export interface ChallengeTraffic {
 
 // ── Challenge Definition ─────────────────────────────────────────────
 
-/** Full challenge definition — pure data, JSON-serializable */
+/** Full challenge definition:pure data, JSON-serializable */
 export interface ChallengeDefinition {
     id: string;
     name: string;

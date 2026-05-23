@@ -32,43 +32,43 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
         <path d="M 580 760 C 420 770 250 710 120 590" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
         <path d="M 100 570 C 90 430 70 280 60 110" fill="none" stroke="#94a3b8" stroke-width="1.5"/>
 
-        <!-- A: Origin 1×1 (20×20, coral) — outputs right, receives bottom -->
+        <!-- A: Origin 1×1 (20×20, coral),outputs right, receives bottom -->
         <rect x="50" y="90" width="20" height="20" rx="4" fill="#FF8B8B" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="60" cy="100" r="4" fill="#FF6B6B" fill-opacity="0.35"/>
         <circle cx="70" cy="100" r="3" fill="#3b82f6"/>
         <circle cx="60" cy="110" r="3" fill="#22c55e"/>
 
-        <!-- B: REST 2×2 (40×40, sky) — receives left, outputs right -->
+        <!-- B: REST 2×2 (40×40, sky),receives left, outputs right -->
         <rect x="310" y="30" width="40" height="40" rx="6" fill="#87CEEB" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="330" cy="50" r="9" fill="#5bb8e8" fill-opacity="0.3"/>
         <circle cx="310" cy="50" r="3" fill="#22c55e"/>
         <circle cx="350" cy="50" r="3" fill="#3b82f6"/>
 
-        <!-- C: LB 2×2 (40×40, gold) — receives left, outputs right -->
+        <!-- C: LB 2×2 (40×40, gold),receives left, outputs right -->
         <rect x="890" y="30" width="40" height="40" rx="6" fill="#FFE5A0" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="910" cy="50" r="9" fill="#f5c842" fill-opacity="0.3"/>
         <circle cx="890" cy="50" r="3" fill="#22c55e"/>
         <circle cx="930" cy="50" r="3" fill="#3b82f6"/>
 
-        <!-- D: Cache 2×1 (40×20, mint) — receives top, outputs bottom -->
+        <!-- D: Cache 2×1 (40×20, mint),receives top, outputs bottom -->
         <rect x="1130" y="200" width="40" height="20" rx="4" fill="#A8E6CF" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="1150" cy="210" r="5" fill="#6fcfad" fill-opacity="0.3"/>
         <circle cx="1150" cy="200" r="3" fill="#22c55e"/>
         <circle cx="1150" cy="220" r="3" fill="#3b82f6"/>
 
-        <!-- E: DB 3×3 (60×60, lavender) — receives top, outputs left -->
+        <!-- E: DB 3×3 (60×60, lavender),receives top, outputs left -->
         <rect x="1080" y="565" width="60" height="60" rx="6" fill="#D4A5FF" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="1110" cy="595" r="13" fill="#b06aee" fill-opacity="0.25"/>
         <circle cx="1110" cy="565" r="3" fill="#22c55e"/>
         <circle cx="1080" cy="595" r="3" fill="#3b82f6"/>
 
-        <!-- F: MQ 2×3 (40×60, peach) — receives right, outputs left -->
+        <!-- F: MQ 2×3 (40×60, peach),receives right, outputs left -->
         <rect x="580" y="730" width="40" height="60" rx="6" fill="#FFCBA4" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="600" cy="760" r="9" fill="#f5a261" fill-opacity="0.3"/>
         <circle cx="620" cy="760" r="3" fill="#22c55e"/>
         <circle cx="580" cy="760" r="3" fill="#3b82f6"/>
 
-        <!-- G: REST 2×2 (40×40, sky) — receives right, outputs top -->
+        <!-- G: REST 2×2 (40×40, sky),receives right, outputs top -->
         <rect x="80" y="570" width="40" height="40" rx="6" fill="#87CEEB" stroke="#94a3b8" stroke-width="1"/>
         <circle cx="100" cy="590" r="9" fill="#5bb8e8" fill-opacity="0.3"/>
         <circle cx="120" cy="590" r="3" fill="#22c55e"/>
@@ -135,7 +135,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
             </div>
             <h2 class="text-xl font-semibold text-slate-800 mt-4">Sandbox</h2>
             <p class="text-sm text-slate-500 mt-2 text-center leading-relaxed">
-              Build freely. No limits, no goals — just pure architecture.
+              Build freely. No limits, no goals. Just pure architecture.
             </p>
           </a>
         } @else {

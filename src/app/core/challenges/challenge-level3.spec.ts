@@ -8,7 +8,7 @@ import { mustFind, mustPlace, runTicks } from './challenge-test-helpers';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('Level 3: Two Backends — star evaluation', () => {
+describe('Level 3: Two Backends:star evaluation', () => {
     let challengeService: ChallengeService;
     let tickEngine: TickEngineService;
     let gameState: GameStateService;
@@ -107,7 +107,7 @@ describe('Level 3: Two Backends — star evaluation', () => {
         expect(challengeService.starStatus()).toEqual([true, true, true]);
     });
 
-    it('earns 3 stars does not require both LB outputs to be the same port — any 2 distinct paths qualify', () => {
+    it('earns 3 stars does not require both LB outputs to be the same port:any 2 distinct paths qualify', () => {
         // Verify the path count logic: ★3 needs pathExists([Origin,LB,REST,DB]) >= 2
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);

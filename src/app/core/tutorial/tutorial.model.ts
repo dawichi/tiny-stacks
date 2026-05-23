@@ -11,7 +11,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
         description: 'Drag the Cache service from the palette (bottom-left) and drop it on the grid.',
         hint: 'Mint-green tile with a lightning bolt icon.',
         realWorldNote:
-            'Redis is the most widely used cache — GitHub and Stack Overflow serve billions of reads per day with it.',
+            'Redis is the most widely used cache. GitHub and Stack Overflow serve billions of reads per day with it.',
     },
     {
         title: 'Connect REST → Cache',
@@ -22,7 +22,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     {
         title: 'Connect Cache → Database',
         description: 'Drag from the blue output port on the Cache to the orange port on the Database.',
-        hint: 'The Database has an orange bidirectional port — it handles both requests and responses.',
+        hint: 'The Database has an orange bidirectional port that handles both requests and responses.',
     },
     {
         title: 'Remove the bypass',
@@ -35,7 +35,7 @@ export const TUTORIAL_STEPS: TutorialStep[] = [
     {
         title: 'Set a route rule',
         description:
-            'Click the REST → Cache cable. In the panel that opens, disable POST, PUT, and DELETE — writes should not be cached.',
+            'Click the REST → Cache cable. In the panel that opens, disable POST, PUT, and DELETE. Writes should not be cached.',
         hint: 'Click the cable to select it, then toggle methods in the Route Rule panel on the right.',
         realWorldNote:
             'Route rules are how API gateways work in production. Nginx, Kong, and Envoy all route by HTTP method.',
