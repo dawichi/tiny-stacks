@@ -77,10 +77,6 @@ import { ChallengeService } from '../../core/challenges/challenge.service';
       opacity: 0.6;
       cursor: not-allowed;
     }
-    .star-filled ::ng-deep svg {
-      fill: currentColor;
-      filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.4));
-    }
   `,
     ],
 })

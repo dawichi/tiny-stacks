@@ -30,10 +30,6 @@ interface StarToast {
     :host {
       display: block;
     }
-    .star-filled ::ng-deep svg {
-      fill: currentColor;
-      filter: drop-shadow(0 0 4px rgba(251, 191, 36, 0.5));
-    }
     @keyframes toast-in {
       from { opacity: 0; transform: translateX(12px); }
       to   { opacity: 1; transform: translateX(0); }

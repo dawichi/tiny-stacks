@@ -29,3 +29,8 @@ html, body {
   margin: 0;
   padding: 0;
 }
+
+svg.star-filled {
+  fill: currentColor;
+  filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.4));
+}
