@@ -40,6 +40,13 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
         {{ config().name }}
       </span>
 
+      <!-- Origin rps label -->
+      @if (originRps() !== null) {
+        <span class="text-[9px] font-semibold text-white/70 leading-none mt-0.5">
+          {{ originRps() }} req/s
+        </span>
+      }
+
       <!-- Queue fill bar -->
       @if (showQueueBar()) {
         <div class="queue-bar absolute bottom-0 left-0 right-0 h-[3px] bg-black/10">
@@ -122,6 +129,7 @@ export class ServiceComponent {
     readonly connectionDragActive = input<boolean>(false);
     readonly runtimeVisual = input<ServiceVisualState | null>(null);
     readonly simulationRunning = input<boolean>(false);
+    readonly originRps = input<number | null>(null);
 
     // ── Outputs ────────────────────────────────────────────────────────
     readonly portDragStart = output<{ serviceId: string; portIndex: number }>();

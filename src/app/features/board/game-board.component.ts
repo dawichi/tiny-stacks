@@ -1,7 +1,7 @@
 import { Component, computed, HostListener, inject, signal } from '@angular/core';
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
-import { getServiceConfig, type ServiceType } from '../../core/game/service-types.config';
+import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
 import { type ServiceVisualState, TickEngineService } from '../../core/game/tick-engine.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
@@ -298,6 +298,12 @@ export class GameBoardComponent {
 
     protected getServiceVisual(serviceId: string): ServiceVisualState | null {
         return this.simulation.serviceVisuals().get(serviceId) ?? null;
+    }
+
+    protected getOriginRps(serviceId: string, type: ServiceType): number | null {
+        if (type !== ServiceType.ORIGIN) return null;
+        const override = this.simulation.trafficOverrides().get(serviceId);
+        return override?.requestsPerSecond ?? 10;
     }
 
     // ── Private helpers ────────────────────────────────────────────────

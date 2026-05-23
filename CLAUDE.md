@@ -47,7 +47,9 @@ src/app/
 │   │   ├── challenge-definitions.ts      # Challenge levels (pure data, JSON-serializable)
 │   │   ├── challenge.service.ts          # Runtime: load, evaluate, persist progress
 │   │   ├── challenge-test-helpers.ts     # Shared test utilities (runTicks, mustFind, mustPlace)
-│   │   └── challenge-level1.spec.ts      # Integration tests for level 1 star evaluation
+│   │   ├── challenge-level1.spec.ts      # Integration tests — L1 Cache Layer
+│   │   ├── challenge-level2.spec.ts      # Integration tests — L2 Two Backends
+│   │   └── challenge-level3.spec.ts      # Integration tests — L3 Smart Routes
 │   ├── tutorial/
 │   │   ├── tutorial.model.ts             # TutorialStep type — title, description, hint, realWorldNote
 │   │   ├── tutorial.service.ts           # Step sequencing (computed signals), board init, completion tracking
@@ -138,74 +140,79 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 **9-level progression (3×3 grid):**
 
 > L1 (Hello Backend) removed — its role as mechanic teacher is now the `/tutorial`.
-> L2 (Cache Layer) removed as a challenge — its topology is the tutorial's teaching scenario.
-> Old L3–L9 renumbered L1–L7. L8–L9 are TBD (design pending).
+> Cache Layer kept as the first challenge (L1): while the topology mirrors the tutorial, the
+> star system adds route-rule filtering on top — a distinct puzzle. Old L3–L9 renumbered L2–L8.
 
-Row 1 — Learn routing (route rules as core mechanic):
-| # | Name | Locked | Pre-drawn | Player places |
-|---|------|--------|-----------|---------------|
-| 1 | Two Backends | Origin, REST₁, REST₂, DB | Origin→REST₁, REST₁→DB, REST₂→DB | 1 LB |
-| 2 | Smart Routes | Origin, REST, Cache, DB | Origin→REST | — (connect + set route rules) |
-| 3 | Write Buffer | Origin, REST, DB | Origin→REST, REST→DB | 1 MQ |
+Row 1 — Learn (place one component, then commit):
+| # | Name | Pre-placed | Pre-drawn | Player places |
+|---|------|------------|-----------|---------------|
+| 1 ✅ | Cache Layer | Origin, REST, DB | Origin→REST, REST→DB | 1 Cache |
+| 2 ✅ | Two Backends | Origin, REST₁, REST₂, DB | Origin→REST₁, REST₁→DB, REST₂→DB | 1 LB |
+| 3 ✅ | Smart Routes | Origin, REST, Cache, DB | Origin→REST | — (connect + set route rules) |
 
-Row 2 — Combine two patterns:
-| # | Name | Locked | Pre-drawn | Player places |
-|---|------|--------|-----------|---------------|
-| 4 | The Gateway | Origin, REST, DB | Origin→REST, REST→DB | 1 GW, 1 Cache |
-| 5 | Scale + Cache | Origin, REST₁, REST₂, DB | REST₁→DB, REST₂→DB | 1 LB, 1 Cache |
-| 6 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
+Row 2 — Combine patterns:
+| # | Name | Pre-placed | Pre-drawn | Player places |
+|---|------|------------|-----------|---------------|
+| 4 | Write Buffer | Origin, REST, DB | Origin→REST, REST→DB | 1 MQ |
+| 5 | The Gateway | Origin, REST, DB | Origin→REST, REST→DB | 1 GW, 1 Cache |
+| 6 | Scale + Cache | Origin, REST₁, REST₂, DB | REST₁→DB, REST₂→DB | 1 LB, 1 Cache |
 
 Row 3 — Advanced:
-| # | Name | Locked | Pre-drawn | Player places |
-|---|------|--------|-----------|---------------|
-| 7 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
-| 8 | TBD | — | — | — |
+| # | Name | Pre-placed | Pre-drawn | Player places |
+|---|------|------------|-----------|---------------|
+| 7 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
+| 8 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
 | 9 | TBD | — | — | — |
 
 **Per-level solution topologies:**
 
 The system checks ★3 first; the first matching tier wins. ★2 and ★3 may be mutually exclusive topologies — that is fine; hierarchical evaluation handles it.
 
-> **L1 — Two Backends** *(old L3)*
-> - ★1: `pathExists([Origin, LB, REST, DB])` + `pathExists([Origin, REST])` direct — LB introduced, bypass still exists
-> - ★2: `pathExists([Origin, LB, REST, DB])` + `pathNotExists([Origin, REST])` — all traffic through LB, bypass removed (may route to one REST only)
-> - ★3: `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + `pathNotExists([Origin, REST])` — true distribution, both backends receiving traffic
+> **L1 — Cache Layer** ✅ *(implemented)*
+> - ★1 "Cache in the pipeline": `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` direct bypass still present
+> - ★2 "No direct DB access": `pathExists([REST, Cache, DB])` + `pathNotExists([REST, DB])`
+> - ★3 "Smart read/write routing": `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])`
 
-> **L2 — Smart Routes** *(old L4)*
-> - ★1: `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])` — both paths wired, no route rules
-> - ★2: `filteredPathExists([REST, Cache], [GET])` + `pathExists([REST, DB])` — reads routed through cache
-> - ★3: `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])` — both paths fully ruled
+> **L2 — Two Backends** ✅ *(implemented)*
+> - ★1 "Load Balancer connected": `pathExists([Origin, LB, REST, DB])` + `pathExists([Origin, REST])` bypass still present
+> - ★2 "Traffic centralized": `pathExists([Origin, LB, REST, DB])` + `pathNotExists([Origin, REST])`
+> - ★3 "True load distribution": `pathExists([Origin, LB, REST, DB]) >= 2` + `pathNotExists([Origin, REST])`
 
-> **L3 — Write Buffer** *(old L5)*
+> **L3 — Smart Routes** ✅ *(implemented)*
+> - ★1 "Both paths wired": `pathExists([REST, Cache, DB])` + `pathExists([REST, DB])`
+> - ★2 "Reads routed to cache": `filteredPathExists([REST, Cache], [GET])` + `pathExists([REST, DB])`
+> - ★3 "Traffic fully separated": `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, DB], [POST,PUT,DELETE])`
+
+> **L4 — Write Buffer**
 > Pre-drawn REST→DB ensures reads always reach DB; the puzzle is about writes.
-> - ★1: `pathExists([REST, MQ, DB])` — MQ in path, no route rule (reads + writes both flow through it)
-> - ★2: `pathExists([REST, MQ, DB])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` — writes buffered; reads still go via REST→DB (pre-drawn, unruled)
-> - ★3: `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` + `filteredPathExists([REST, DB], [GET])` — hard separation: writes only through MQ, reads only through DB
+> - ★1 "Queue connected": `pathExists([REST, MQ, DB])` — MQ in path, no route rule (reads + writes flow through it)
+> - ★2 "Writes buffered": `pathExists([REST, MQ, DB])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])`
+> - ★3 "Hard read/write separation": `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` + `filteredPathExists([REST, DB], [GET])`
 
-> **L4 — The Gateway** *(old L6)*
+> **L5 — The Gateway**
 > Pre-drawn REST→DB ensures the system works before GW is inserted. Player can also add Cache for ★3.
-> - ★1: `pathExists([Origin, GW, REST])` + `pathExists([Origin, REST])` direct — GW inserted but bypass still present
-> - ★2: `pathExists([Origin, GW, REST])` + `pathNotExists([Origin, REST])` — all traffic through GW, bypass removed
-> - ★3: ★2 + `pathExists([REST, Cache, DB])` — GW as sole entry AND Cache on the read path
+> - ★1 "Gateway online": `pathExists([Origin, GW, REST])` + `pathExists([Origin, REST])` direct — bypass still present
+> - ★2 "Single entry point": `pathExists([Origin, GW, REST])` + `pathNotExists([Origin, REST])`
+> - ★3 "Gateway + cache": ★2 + `pathExists([REST, Cache, DB])`
 
-> **L5 — Scale + Cache** *(old L7)*
+> **L6 — Scale + Cache**
 > Pre-drawn REST₁→DB and REST₂→DB handle writes. Player adds LB + Cache for reads.
-> - ★1: `pathExists([Origin, LB, REST, Cache, DB])` — LB and Cache both in use, but only one REST connected to LB
-> - ★2: `pathExists([LB, REST₁, Cache, DB])` + `pathExists([LB, REST₂, Cache, DB])` — both REST instances through shared Cache
-> - ★3: ★2 + `filteredPathExists([REST, Cache], [GET])` — Cache is GET-only; writes fall through to pre-drawn REST→DB
+> - ★1 "Scaling with cache": `pathExists([Origin, LB, REST, Cache, DB])` — LB and Cache in use, one backend
+> - ★2 "Both backends cached": `pathExists([LB, REST₁, Cache, DB])` + `pathExists([LB, REST₂, Cache, DB])`
+> - ★3 "Cache GET-only": ★2 + `filteredPathExists([REST, Cache], [GET])`
 
-> **L6 — Two Paths** *(old L8)*
+> **L7 — Two Paths**
 > Pre-drawn Origin→REST₁ and Origin→REST₂ are unruled; the puzzle is building and then ruling both paths.
-> - ★1: `pathExists([REST₁, Cache, DB])` + `pathExists([REST₂, MQ, DB])` — both paths built, no route rules
-> - ★2: ★1 + `filteredPathExists([Origin, REST₁], [GET])` + `filteredPathExists([Origin, REST₂], [POST,PUT,DELETE])` — origin traffic split at source
-> - ★3: ★2 + `filteredPathExists([REST₁, Cache], [GET])` + `filteredPathExists([REST₂, MQ], [POST,PUT,DELETE])` — double ruling: origin and service level both set
+> - ★1 "Both paths built": `pathExists([REST₁, Cache, DB])` + `pathExists([REST₂, MQ, DB])`
+> - ★2 "Origin traffic split": ★1 + `filteredPathExists([Origin, REST₁], [GET])` + `filteredPathExists([Origin, REST₂], [POST,PUT,DELETE])`
+> - ★3 "Double-ruled": ★2 + `filteredPathExists([REST₁, Cache], [GET])` + `filteredPathExists([REST₂, MQ], [POST,PUT,DELETE])`
 
-> **L7 — Full Stack** *(old L9)*
-> - ★1: `pathExists([Origin, GW, LB, REST, DB])` — GW and LB both present, complete path
-> - ★2: ★1 + `pathExists([LB, REST₁, DB])` + `pathExists([LB, REST₂, DB])` + one of `pathExists([REST, Cache, DB])` or `pathExists([REST, MQ, DB])` — both backends active, at least one optimisation layer
-> - ★3: ★2 + both `pathExists([REST, Cache, DB])` AND `pathExists([REST, MQ, DB])` — full production architecture: Cache and MQ both in use
+> **L8 — Full Stack**
+> - ★1 "Full pipeline": `pathExists([Origin, GW, LB, REST, DB]) >= 1` — GW and LB present, at least one direct path to DB
+> - ★2 "Both backends + optimisation": `pathExists([Origin, GW, LB, REST]) >= 2` + `pathExists([REST, Cache, DB])` — two backends through LB, Cache in use (REST may route through Cache/MQ, not directly to DB)
+> - ★3 "Production ready": ★2 conditions + `pathExists([REST, MQ, DB])` — Cache AND MQ both in use
 
-> **L8–L9** — TBD (design pending)
+> **L9** — TBD (design pending)
 
 ### Tutorial System
 
@@ -250,7 +257,7 @@ Trigger examples:
 
 | Type | Size | Color | Behavior |
 |------|------|-------|----------|
-| Origin | 1×1 | #FF8B8B Coral | Traffic source — spawns requests at configurable req/s |
+| Origin | 2×2 | #FF8B8B Coral | Traffic source — spawns requests at configurable req/s; tile displays the rps count |
 | API Gateway | 3×2 | #88D8D8 Teal | Entry point — low latency routing |
 | REST Service | 2×2 | #87CEEB Sky | Business logic hub — main bottleneck at high load |
 | Database | 3×3 | #D4A5FF Lavender | Slow + limited concurrency — the classic scaling problem |
@@ -300,8 +307,8 @@ Do these at the end of a long session or every ~10 commits:
 ## Roadmap
 
 ### Next
-1. **Insight Pills** — Inspector "About" section + discovery toasts; `InsightService` + `insight-definitions.ts` in `core/insights/`
-2. **Challenges L1–L7** — implement per the renumbered progression table (old L3–L9); delete old L1/L2 definitions and `challenge-level1.spec.ts`
+1. **Challenges L4–L8** — implement Write Buffer, The Gateway, Scale+Cache, Two Paths, Full Stack per the topologies above; add spec files for each
+2. **Insight Pills** — Inspector "About" section + discovery toasts; `InsightService` + `insight-definitions.ts` in `core/insights/`
 3. Service configuration editing (processing time, queue size per service)
 4. Batch rendering at high throughput (one ball = N requests)
 

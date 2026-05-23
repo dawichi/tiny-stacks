@@ -27,7 +27,7 @@ describe('Level 3: Two Backends — star evaluation', () => {
         tickEngine = TestBed.inject(TickEngineService);
         gameState = TestBed.inject(GameStateService);
 
-        challengeService.loadChallenge('level-3');
+        challengeService.loadChallenge('level-2');
     });
 
     afterEach(() => {

@@ -58,6 +58,7 @@
       [connectionDragActive]="connectionDragActive()"
       [runtimeVisual]="getServiceVisual(service.id)"
       [simulationRunning]="simulation.running()"
+      [originRps]="getOriginRps(service.id, service.type)"
       (click)="onServiceClick(service.id)"
       (portDragStart)="onPortDragStart($event)"
       (portDragEnd)="onPortDragEnd($event)"

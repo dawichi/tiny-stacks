@@ -88,7 +88,7 @@ export class ChallengePageComponent implements OnInit, OnDestroy {
         if (!ch) return [];
         return ch.stars.map((star, i) => ({
             earned: status[i],
-            conditions: star.conditions.map((c) => c.label),
+            label: star.label,
         }));
     });
 

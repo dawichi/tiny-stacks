@@ -22,7 +22,6 @@ export interface WinCondition {
     operator: ConditionOperator;
     value: number;
     sustainMs?: number; // must hold true for this duration (default 0 = instant)
-    label: string; // human-readable, e.g. "Handle 50 req/s for 10s"
     /** Required for metric === 'pathExists' | 'filteredPathExists': ordered service type chain */
     path?: ServiceType[];
     /** Required for metric === 'filteredPathExists': the connection must allow EXACTLY these methods */
@@ -31,6 +30,7 @@ export interface WinCondition {
 
 /** Star tier — all conditions must pass to earn this star */
 export interface StarTier {
+    label: string; // achievement name shown to the player
     conditions: WinCondition[];
 }
 

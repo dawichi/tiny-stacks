@@ -51,13 +51,9 @@
               class="shrink-0 mt-0.5"
               [class]="star.earned ? 'star-filled text-amber-400' : 'text-slate-300'"
             />
-            <div class="flex flex-col gap-0.5">
-              @for (cond of star.conditions; track $index) {
-                <span class="text-xs leading-snug"
-                  [class]="star.earned ? 'text-slate-400 line-through' : 'text-slate-600'"
-                >{{ cond }}</span>
-              }
-            </div>
+            <span class="text-xs leading-snug"
+              [class]="star.earned ? 'text-slate-400 line-through' : 'text-slate-600'"
+            >{{ star.label }}</span>
           </div>
         }
       </div>
@@ -112,11 +108,7 @@
             @for (star of challenge()?.stars ?? []; track $index) {
               <div class="flex items-start gap-2 text-sm text-slate-600">
                 <lucide-icon [img]="StarIcon" [size]="14" class="text-slate-300 shrink-0 mt-0.5" />
-                <div class="flex flex-col gap-0.5">
-                  @for (cond of star.conditions; track $index) {
-                    <span>{{ cond.label }}</span>
-                  }
-                </div>
+                <span>{{ star.label }}</span>
               </div>
             }
           </div>
@@ -151,13 +143,9 @@
                 [size]="20"
                 [class]="star.earned ? 'star-filled text-amber-400 shrink-0 mt-0.5' : 'text-slate-300 shrink-0 mt-0.5'"
               />
-              <div class="flex flex-col gap-0.5">
-                @for (cond of star.conditions; track $index) {
-                  <span class="text-sm" [class]="star.earned ? 'text-slate-700' : 'text-slate-400'">
-                    {{ cond }}
-                  </span>
-                }
-              </div>
+              <span class="text-sm" [class]="star.earned ? 'text-slate-700' : 'text-slate-400'">
+                {{ star.label }}
+              </span>
             </div>
           }
         </div>

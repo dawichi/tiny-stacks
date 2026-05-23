@@ -28,7 +28,7 @@ describe('Level 2: Cache Layer — star evaluation', () => {
         tickEngine = TestBed.inject(TickEngineService);
         gameState = TestBed.inject(GameStateService);
 
-        challengeService.loadChallenge('level-2');
+        challengeService.loadChallenge('level-1');
     });
 
     afterEach(() => {

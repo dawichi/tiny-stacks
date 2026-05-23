@@ -1,5 +1,7 @@
 import { Component, inject, signal } from '@angular/core';
 import { LucideAngularModule, Settings, X } from 'lucide-angular';
+import type { ChallengeProgress } from '../../core/challenges/challenge.model';
+import { CHALLENGE_DEFINITIONS } from '../../core/challenges/challenge-definitions';
 import { StorageKeys, StorageService } from '../../core/storage/storage.service';
 
 @Component({
@@ -25,11 +27,20 @@ import { StorageKeys, StorageService } from '../../core/storage/storage.service'
                         <p class="section-label dev-label">Dev tools</p>
                         <div class="dev-row">
                             <div>
-                                <p class="danger-title">Skip tutorial</p>
+                                <p class="danger-title">Unlock all modes</p>
                                 <p class="danger-desc">Marks tutorial complete and unlocks Sandbox + Challenges.</p>
                             </div>
                             <div class="danger-actions">
-                                <button class="btn-dev" (click)="skipTutorial()">Unlock all</button>
+                                <button class="btn-dev" (click)="unlockModes()">Unlock modes</button>
+                            </div>
+                        </div>
+                        <div class="dev-row" style="margin-top: 0.5rem">
+                            <div>
+                                <p class="danger-title">Unlock all challenges</p>
+                                <p class="danger-desc">Sets all challenges to 3 stars for instant access.</p>
+                            </div>
+                            <div class="danger-actions">
+                                <button class="btn-dev" (click)="unlockChallenges()">Unlock challenges</button>
                             </div>
                         </div>
 
@@ -275,9 +286,18 @@ export class SettingsComponent {
         this.confirming.set(false);
     }
 
-    protected skipTutorial(): void {
+    protected unlockModes(): void {
         this.storage.setItem(StorageKeys.TUTORIAL_COMPLETE, true);
         window.location.href = '/';
+    }
+
+    protected unlockChallenges(): void {
+        const progress: ChallengeProgress = {};
+        for (const def of CHALLENGE_DEFINITIONS) {
+            progress[def.id] = { starsEarned: 3 };
+        }
+        this.storage.setItem(StorageKeys.CHALLENGE_PROGRESS, progress);
+        window.location.href = '/challenges';
     }
 
     protected reset(): void {
