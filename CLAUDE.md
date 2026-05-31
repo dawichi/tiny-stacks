@@ -65,7 +65,7 @@ src/app/
 ├── features/
 │   ├── board/
 │   │   ├── game-board.component.ts/.html # Board canvas: drag-drop, connections, packets
-│   │   └── board-toolbar.component.ts/.html # Metrics, speed, undo/redo, play/pause
+│   │   └── board-toolbar.component.ts/.html # Undo/redo
 │   ├── challenges/
 │   │   ├── challenges-page.component.ts  # Level selection grid
 │   │   └── challenge-page.component.ts/.html # Challenge play view: HUD, briefing, objectives, toasts

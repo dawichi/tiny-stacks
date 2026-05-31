@@ -319,54 +319,6 @@ export class GameStateService {
         this.connections.set(snapshot.connections);
     }
 
-    /**
-     * Load an example architecture: Origin → Gateway → REST → Cache → Database
-     * Demonstrates response paths and cache hit/miss mechanics.
-     */
-    loadExampleSetup(): void {
-        this.clearAll();
-
-        const origin = this.addService(ServiceType.ORIGIN, 0, 6);
-        const gateway = this.addService(ServiceType.API_GATEWAY, 2, 5);
-        const rest = this.addService(ServiceType.REST_SERVICE, 6, 5);
-        const cache = this.addService(ServiceType.CACHE, 9, 6);
-        const db = this.addService(ServiceType.DATABASE, 12, 5);
-
-        if (!origin || !gateway || !rest || !cache || !db) return;
-
-        // Origin(output:0) → Gateway(input:0)
-        this.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: gateway.id, portIndex: 0 });
-        // Gateway(output:1) → REST(input:0)
-        this.addConnection({ serviceId: gateway.id, portIndex: 1 }, { serviceId: rest.id, portIndex: 0 });
-        // REST(output:1) → Cache(input:0)
-        this.addConnection({ serviceId: rest.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
-        // Cache(output:1) → Database(bidirectional:0)
-        this.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
-    }
-
-    /**
-     * Load a stress-test architecture: 12 Origins → Gateway → Database
-     * 120 req/s overwhelms the Database (100 req/s capacity), triggering queue overflow failures.
-     */
-    loadStressTestSetup(): void {
-        this.clearAll();
-
-        const gateway = this.addService(ServiceType.API_GATEWAY, 3, 5);
-        const db = this.addService(ServiceType.DATABASE, 7, 5);
-
-        if (!gateway || !db) return;
-
-        // Gateway(output:1) → Database(bidirectional:0)
-        this.addConnection({ serviceId: gateway.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
-
-        // Stack 12 Origins in a column, all connecting to Gateway
-        for (let i = 0; i < 12; i++) {
-            const origin = this.addService(ServiceType.ORIGIN, 0, i + 1);
-            if (!origin) continue;
-            this.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: gateway.id, portIndex: 0 });
-        }
-    }
-
     private pushSnapshot(): void {
         const snapshot = { services: this.services(), connections: this.connections() };
         this.undoStack.update((stack) => [...stack.slice(-(MAX_UNDO_STACK - 1)), snapshot]);

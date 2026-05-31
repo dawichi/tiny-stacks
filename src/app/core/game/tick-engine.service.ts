@@ -93,7 +93,6 @@ export class TickEngineService {
 
     // ── State ──────────────────────────────────────────────────────────
     readonly running = signal(false);
-    readonly speed = signal(1);
 
     /** Per-origin traffic pattern overrides (set by ChallengeService) */
     readonly trafficOverrides = signal<Map<string, TrafficPattern>>(new Map());
@@ -211,14 +210,6 @@ export class TickEngineService {
     }
 
     // ── Public Methods ─────────────────────────────────────────────────
-    toggle(): void {
-        if (this.running()) {
-            this.stop();
-        } else {
-            this.start();
-        }
-    }
-
     start(): void {
         if (this.running()) return;
         this.running.set(true);
@@ -230,55 +221,6 @@ export class TickEngineService {
     tickOnce(simDeltaMs: number): void {
         this.tickCount++;
         this.processSimulation(simDeltaMs);
-    }
-
-    /**
-     * Capture a debug snapshot of the full simulation state for diagnostics.
-     */
-    debugSnapshot(): string {
-        const services = this.gameState.services();
-        const connections = this.gameState.connections();
-        const requests = this._requests();
-        const states = this._runtimeStates();
-
-        const requestsByStatus: Record<string, number> = {};
-        for (const r of requests) {
-            const key = `${r.direction}:${r.status}`;
-            requestsByStatus[key] = (requestsByStatus[key] ?? 0) + 1;
-        }
-
-        const serviceStates = services.map((svc) => {
-            const config = getServiceConfig(svc.type);
-            const state = states.get(svc.id);
-            const outgoing = connections.filter((c) => c.source.serviceId === svc.id).length;
-            const incoming = connections.filter((c) => c.target.serviceId === svc.id).length;
-            const cacheStats = this._cacheStats.get(svc.id);
-            const cachedResources = this.cacheContents.get(svc.id)?.size ?? 0;
-
-            return {
-                name: config.name,
-                type: svc.type,
-                queue: state ? `${state.queue.length}/${config.queueSize}` : '-',
-                processing: state ? `${state.processing.length}/${config.maxConcurrency}` : '-',
-                processingTime: `${config.baseProcessingTime}ms`,
-                connections: `in:${incoming} out:${outgoing}`,
-                ...(cacheStats
-                    ? { cache: `hits:${cacheStats.hits} misses:${cacheStats.misses} cached:${cachedResources}` }
-                    : {}),
-            };
-        });
-
-        const snapshot = {
-            tick: this.tickCount,
-            speed: this.speed(),
-            metrics: this.metrics(),
-            requestsByStatus,
-            totalRequests: requests.length,
-            failedPacketAnims: this._failedPackets().length,
-            services: serviceStates,
-        };
-
-        return JSON.stringify(snapshot, null, 2);
     }
 
     stop(): void {
@@ -460,7 +402,7 @@ export class TickEngineService {
     private tick(): void {
         if (!this.running()) return;
         this.tickCount++;
-        this.processSimulation(TICK_MS * this.speed());
+        this.processSimulation(TICK_MS);
     }
 
     private processSimulation(simDelta: number): void {

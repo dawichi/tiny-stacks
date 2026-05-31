@@ -1,6 +1,7 @@
 import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ArrowLeft, CheckCircle, LucideAngularModule, Trophy } from 'lucide-angular';
+import { TickEngineService } from '../../core/game/tick-engine.service';
 import { TutorialService } from '../../core/tutorial/tutorial.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
@@ -39,6 +40,7 @@ import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
 })
 export class TutorialPageComponent implements OnInit, OnDestroy {
     private readonly router = inject(Router);
+    private readonly simulation = inject(TickEngineService);
     protected readonly tutorial = inject(TutorialService);
 
     protected readonly ArrowLeftIcon = ArrowLeft;
@@ -69,6 +71,7 @@ export class TutorialPageComponent implements OnInit, OnDestroy {
     ngOnInit(): void {
         this._initiallyComplete = this.tutorial.isComplete();
         this.tutorial.init();
+        this.simulation.start();
     }
 
     ngOnDestroy(): void {

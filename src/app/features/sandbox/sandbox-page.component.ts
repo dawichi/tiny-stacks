@@ -1,6 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ArrowLeft, LucideAngularModule } from 'lucide-angular';
+import { TickEngineService } from '../../core/game/tick-engine.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
@@ -39,6 +40,11 @@ import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
     </main>
   `,
 })
-export class SandboxPageComponent {
+export class SandboxPageComponent implements OnInit {
+    private readonly simulation = inject(TickEngineService);
     protected readonly ArrowLeftIcon = ArrowLeft;
+
+    ngOnInit(): void {
+        this.simulation.start();
+    }
 }
