@@ -127,9 +127,10 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         briefing:
             'The sale starts at midnight in two days. Traffic projections say 3× normal load. ' +
             "One REST Service won't handle it, but you have a second one sitting idle, already wired to the Database. " +
-            'Place a Load Balancer in front of both backends, connect them up, ' +
-            'then cut the direct Origin → REST shortcut. ' +
-            'When the spike hits, both backends share the load instead of one dying alone.',
+            'You have a Load Balancer in your arsenal. ' +
+            'You could wire Origin straight to both backends for a quick split, ' +
+            'or go clean: put the Load Balancer in front of both and cut the direct connection. ' +
+            'When the spike hits, the cleanest topology holds.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 3, locked: true },
@@ -162,58 +163,53 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.LOAD_BALANCER, count: 1 }],
         stars: [
             {
-                // ★1: LB introduced, path through LB exists AND direct bypass still present
-                label: 'Load Balancer connected',
+                // ★1: both backends wired directly from Origin, no LB in the path
+                label: 'Wire up the idle backend',
                 conditions: [
                     {
                         metric: 'pathExists',
                         operator: '>=',
-                        value: 1,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                ],
-            },
-            {
-                // ★2: bypass removed, all traffic through LB (may route to only one REST instance)
-                label: 'Traffic centralized',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
+                        value: 2,
+                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE, ServiceType.DATABASE],
                         sustainMs: 0,
                     },
                     {
                         metric: 'pathNotExists',
                         operator: '>=',
                         value: 1,
+                        path: [ServiceType.ORIGIN, ServiceType.LOAD_BALANCER],
+                        sustainMs: 0,
+                    },
+                ],
+            },
+            {
+                // ★2: LB added and connected, but direct Origin→REST bypass still present
+                label: 'LB added but hedged',
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [
+                            ServiceType.ORIGIN,
+                            ServiceType.LOAD_BALANCER,
+                            ServiceType.REST_SERVICE,
+                            ServiceType.DATABASE,
+                        ],
+                        sustainMs: 0,
+                    },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
                         path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
                         sustainMs: 0,
                     },
                 ],
             },
             {
-                // ★3: true distribution, LB routes to BOTH REST instances, bypass removed
-                label: 'True load distribution',
+                // ★3: LB as sole entry, both REST instances connected, bypass removed
+                label: 'Clean LB',
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -245,12 +241,13 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Smart Routes',
         description: 'Reads and writes share the same path. The cache is poisoning itself.',
         briefing:
-            'Your team shipped a Cache last sprint, but forgot to set up routing rules. ' +
-            'POST and PUT requests are flowing into it alongside GETs, poisoning the cached data with stale writes. ' +
-            'Connect paths to both the Cache and the Database. ' +
-            'Then click each connection and set a method filter: ' +
-            'GET reads belong in the Cache, writes belong direct to the Database. ' +
-            'Route rules are how real API gateways work. Nginx, Envoy, and Kong all use this pattern.',
+            'Your team wired up the Cache last sprint but never set any route rules. ' +
+            'Now every request — reads and writes — flows through it, ' +
+            'and every POST or PUT invalidates what the GETs just cached. ' +
+            'You can rip the cache out of the pipeline entirely, ' +
+            'or fix the routing so only reads go through it. ' +
+            'Either way, something has to change. ' +
+            'Route rules are how real API gateways work — nginx, Envoy, and Kong all use them.',
         services: [
             { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
             { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
@@ -260,6 +257,12 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         connections: [
             // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
+            // REST(out:1) → Cache(in:0), pre-drawn, no filter — writes flow through and poison it
+            { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
+            // Cache(out:1) → DB(bidir:0), pre-drawn
+            { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
+            // REST(out:1) → DB(bidir:0), pre-drawn, parallel direct path
+            { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
             {
@@ -279,14 +282,14 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [],
         stars: [
             {
-                // ★1: naive solution, both paths exist, system works (filters not required yet)
-                label: 'Both paths wired',
+                // ★1: cache removed from pipeline entirely — no more poisoning but no caching benefit
+                label: 'Remove the cache',
                 conditions: [
                     {
-                        metric: 'pathExists',
+                        metric: 'pathNotExists',
                         operator: '>=',
                         value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
                         sustainMs: 0,
                     },
                     {
@@ -299,7 +302,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2: reads filtered, GET filter on REST→Cache, write path to DB also connected
+                // ★2: GET filter on REST→Cache, writes fall through to REST→DB naturally
                 label: 'Reads routed to cache',
                 conditions: [
                     {
@@ -320,8 +323,8 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★3: both paths fully filtered, reads cached (GET), writes direct (POST/PUT/DELETE)
-                label: 'Traffic fully separated',
+                // ★3: both paths explicitly filtered — nothing relies on default fallthrough
+                label: 'Fully controlled',
                 conditions: [
                     {
                         metric: 'filteredPathExists',
@@ -385,21 +388,8 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         availableResources: [{ type: ServiceType.MESSAGE_QUEUE, count: 1 }],
         stars: [
             {
-                // ★1: MQ added but no filter, reads + writes both flow through it
-                label: 'Queue connected',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
-            },
-            {
-                // ★2: writes buffered via MQ with filter; reads still use pre-drawn REST→DB
-                label: 'Writes buffered',
+                // ★1: MQ added alongside pre-drawn bypass — both paths active, writes split uncontrolled
+                label: 'Plug in the queue',
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -409,18 +399,37 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         sustainMs: 0,
                     },
                     {
-                        metric: 'filteredPathExists',
+                        metric: 'pathExists',
                         operator: '>=',
                         value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
+                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
                         sustainMs: 0,
                     },
                 ],
             },
             {
-                // ★3: hard separation, writes only via MQ, reads only via DB (both filtered)
-                label: 'Hard read/write separation',
+                // ★2: bypass removed, all traffic through MQ — DB buffered but reads queue up too
+                label: 'Queue everything',
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                    },
+                    {
+                        metric: 'pathNotExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                    },
+                ],
+            },
+            {
+                // ★3: writes buffered via MQ (write filter), reads stay fast via direct DB (GET filter)
+                label: 'Smart split',
                 conditions: [
                     {
                         metric: 'filteredPathExists',
@@ -599,18 +608,17 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1: LB and Cache both in use, but only one REST connected to LB
-                label: 'Scaling with cache',
+                // ★1: LB routes to both backends, but no cache — DB still gets the read flood
+                label: 'Just scale',
                 conditions: [
                     {
                         metric: 'pathExists',
                         operator: '>=',
-                        value: 1,
+                        value: 2,
                         path: [
                             ServiceType.ORIGIN,
                             ServiceType.LOAD_BALANCER,
                             ServiceType.REST_SERVICE,
-                            ServiceType.CACHE,
                             ServiceType.DATABASE,
                         ],
                         sustainMs: 0,
@@ -618,7 +626,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2: both REST instances route through the shared Cache
+                // ★2: both REST instances route through the shared Cache (unfiltered — writes go through too)
                 label: 'Both backends cached',
                 conditions: [
                     {
@@ -711,7 +719,7 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1: both downstream paths built, no route rules anywhere
+                // ★1: downstream paths built, origin unfiltered — traffic still flows randomly to both backends
                 label: 'Both paths built',
                 conditions: [
                     {
@@ -731,23 +739,9 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                 ],
             },
             {
-                // ★2: origin connections filtered to split reads and writes at the source
+                // ★2: origin split by method + downstream paths present; downstream trusted to route correctly
                 label: 'Origin traffic split',
                 conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
                     {
                         metric: 'filteredPathExists',
                         operator: '>=',
@@ -764,10 +758,24 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
                         sustainMs: 0,
                     },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                    },
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                    },
                 ],
             },
             {
-                // ★3: double-ruled, origin and service level both filtered
+                // ★3: origin and downstream both filtered — explicit routing end-to-end, defense in depth
                 label: 'Double-ruled paths',
                 conditions: [
                     {
@@ -847,8 +855,8 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         ],
         stars: [
             {
-                // ★1: full pipeline exists, Origin → GW → LB → REST → DB
-                label: 'Full pipeline',
+                // ★1: minimal demo — GW + one REST reach DB, no LB, no cache, no MQ; works but fragile
+                label: 'Minimal demo',
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -857,43 +865,23 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         path: [
                             ServiceType.ORIGIN,
                             ServiceType.API_GATEWAY,
-                            ServiceType.LOAD_BALANCER,
                             ServiceType.REST_SERVICE,
                             ServiceType.DATABASE,
                         ],
                         sustainMs: 0,
                     },
-                ],
-            },
-            {
-                // ★2: both backends active AND Cache on at least one read path
-                // pathExists stops at REST (not REST→DB) because backends may route through Cache/MQ
-                label: 'Both backends + optimisation',
-                conditions: [
                     {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.API_GATEWAY,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
+                        metric: 'pathNotExists',
                         operator: '>=',
                         value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
+                        path: [ServiceType.ORIGIN, ServiceType.API_GATEWAY, ServiceType.LOAD_BALANCER],
                         sustainMs: 0,
                     },
                 ],
             },
             {
-                // ★3: full production, both backends, Cache AND MQ both in use
-                label: 'Production ready',
+                // ★2: all components placed and wired, both backends via LB, Cache and MQ in use — but no filters
+                label: 'Use everything',
                 conditions: [
                     {
                         metric: 'pathExists',
@@ -919,6 +907,40 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
                         operator: '>=',
                         value: 1,
                         path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
+                        sustainMs: 0,
+                    },
+                ],
+            },
+            {
+                // ★3: both backends, Cache GET-only, MQ write-only — optimal and explicit
+                label: 'Production ready',
+                conditions: [
+                    {
+                        metric: 'pathExists',
+                        operator: '>=',
+                        value: 2,
+                        path: [
+                            ServiceType.ORIGIN,
+                            ServiceType.API_GATEWAY,
+                            ServiceType.LOAD_BALANCER,
+                            ServiceType.REST_SERVICE,
+                        ],
+                        sustainMs: 0,
+                    },
+                    {
+                        metric: 'filteredPathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
+                        requiredMethods: [RequestMethod.GET],
+                        sustainMs: 0,
+                    },
+                    {
+                        metric: 'filteredPathExists',
+                        operator: '>=',
+                        value: 1,
+                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE],
+                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
                         sustainMs: 0,
                     },
                 ],

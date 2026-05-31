@@ -8,7 +8,7 @@ import { mustFind, mustPlace, runTicks } from './challenge-test-helpers';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
-describe('Level 3: Two Backends:star evaluation', () => {
+describe('Level 2: Two Backends:star evaluation', () => {
     let challengeService: ChallengeService;
     let tickEngine: TickEngineService;
     let gameState: GameStateService;
@@ -52,14 +52,12 @@ describe('Level 3: Two Backends:star evaluation', () => {
         expect(challengeService.starStatus()).toEqual([false, false, false]);
     });
 
-    it('earns 1 star when LB path exists and bypass still present', () => {
+    it('earns 1 star when Origin is directly connected to both REST services (no LB)', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
-        const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
 
-        gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-        // Origin→REST₁ pre-drawn bypass still exists
+        // Add direct Origin→REST₂ connection; Origin→REST₁ bypass is pre-drawn
+        gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: rests[1].id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
         const stars = challengeService.starStatus();
@@ -68,18 +66,15 @@ describe('Level 3: Two Backends:star evaluation', () => {
         expect(stars[2]).toBe(false);
     });
 
-    it('earns 2 stars when LB is sole entry but only one REST connected (single-backend LB)', () => {
+    it('earns 2 stars when LB is added but the direct bypass still present', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
         const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
 
+        // LB routes to both backends; Origin→REST₁ pre-drawn bypass still exists
         gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
         gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-
-        const bypass = gameState
-            .connections()
-            .find((c) => c.source.serviceId === origin.id && c.target.serviceId === rests[0].id);
-        if (bypass) gameState.removeConnection(bypass.id);
+        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rests[1].id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
         const stars = challengeService.starStatus();

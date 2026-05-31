@@ -40,17 +40,15 @@ describe('Level 6: Scale + Cache:star evaluation', () => {
         expect(challengeService.starStatus()).toEqual([false, false, false]);
     });
 
-    it('earns 1 star when LB and Cache in use but only one REST connected to LB', () => {
+    it('earns 1 star when LB routes to both backends but no Cache placed', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
-        const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
-        const cache = mustPlace(gameState, ServiceType.CACHE, 12, 3);
 
+        // Both backends through LB; pre-drawn REST→DB connections already exist
         gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
         gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-        gameState.addConnection({ serviceId: rests[0].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rests[1].id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
         const stars = challengeService.starStatus();

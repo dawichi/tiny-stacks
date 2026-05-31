@@ -55,17 +55,19 @@ describe('Level 4: Write Buffer:star evaluation', () => {
         expect(stars[2]).toBe(false);
     });
 
-    it('earns 2 stars when MQ path exists and write-only filter is applied', () => {
+    it('earns 2 stars when all traffic routed through MQ and direct bypass removed', () => {
         const rest = mustFind(gameState.services(), (s) => s.type === ServiceType.REST_SERVICE, 'rest');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 9, 4);
 
-        const mqConn = mustConnect(gameState, { serviceId: rest.id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
-        gameState.updateConnectionFilter(mqConn.id, {
-            methods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-            weight: 100,
-        });
+        gameState.addConnection({ serviceId: rest.id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
         gameState.addConnection({ serviceId: mq.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
+
+        // Remove the pre-drawn REST→DB bypass; everything now flows through MQ
+        const bypass = gameState
+            .connections()
+            .find((c) => c.source.serviceId === rest.id && c.target.serviceId === db.id);
+        if (bypass) gameState.removeConnection(bypass.id);
 
         runTicks(tickEngine, 1000);
         const stars = challengeService.starStatus();
