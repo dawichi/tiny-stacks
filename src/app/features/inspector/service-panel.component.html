@@ -150,14 +150,19 @@
       </div>
     }
 
-    <!-- Delete action -->
-    <button
-      class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs
-             text-red-500 hover:bg-red-50/60 transition-colors border border-red-200/50"
-      (click)="onDelete()"
-    >
-      <lucide-icon [img]="Trash2Icon" [size]="12" />
-      Delete Service
-    </button>
+    @if (isLocked()) {
+      <div class="text-center text-[10px] text-slate-400 border border-slate-200/60 rounded-lg py-2">
+        Pre-placed challenge service
+      </div>
+    } @else {
+      <button
+        class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs
+               text-red-500 hover:bg-red-50/60 transition-colors border border-red-200/50"
+        (click)="onDelete()"
+      >
+        <lucide-icon [img]="Trash2Icon" [size]="12" />
+        Delete Service
+      </button>
+    }
   </div>
 }

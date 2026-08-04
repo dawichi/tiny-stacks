@@ -1,5 +1,6 @@
 import { Component, computed, inject } from '@angular/core';
 import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Trash2, X, Zap } from 'lucide-angular';
+import { ChallengeService } from '../../core/challenges/challenge.service';
 import { GameStateService } from '../../core/game/game-state.service';
 import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
 import { TickEngineService } from '../../core/game/tick-engine.service';
@@ -25,6 +26,7 @@ export class ServicePanelComponent {
     // ── Injected Services ──────────────────────────────────────────────
     private readonly gameState = inject(GameStateService);
     private readonly tickEngine = inject(TickEngineService);
+    private readonly challengeService = inject(ChallengeService);
 
     // ── Icon references ────────────────────────────────────────────────
     protected readonly XIcon = X;
@@ -56,6 +58,11 @@ export class ServicePanelComponent {
     });
 
     protected readonly isOrigin = computed(() => this.service()?.type === ServiceType.ORIGIN);
+
+    protected readonly isLocked = computed(() => {
+        const service = this.service();
+        return service ? this.challengeService.lockedServiceIds().has(service.id) : false;
+    });
 
     protected readonly liveVisual = computed(() => {
         const s = this.service();
@@ -124,7 +131,7 @@ export class ServicePanelComponent {
 
     protected onDelete(): void {
         const s = this.service();
-        if (s) this.gameState.removeService(s.id);
+        if (s && !this.isLocked()) this.gameState.removeService(s.id);
     }
 
     protected onDeleteConnection(connectionId: string): void {

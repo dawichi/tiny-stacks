@@ -47,9 +47,13 @@ src/app/
 │   │   ├── challenge-definitions.ts      # Challenge levels (pure data, JSON-serializable)
 │   │   ├── challenge.service.ts          # Runtime: load, evaluate, persist progress
 │   │   ├── challenge-test-helpers.ts     # Shared test utilities (runTicks, mustFind, mustPlace)
-│   │   ├── challenge-level1.spec.ts      # Integration tests — L1 Cache Layer
-│   │   ├── challenge-level2.spec.ts      # Integration tests — L2 Two Backends
-│   │   └── challenge-level3.spec.ts      # Integration tests — L3 Smart Routes
+│   │   ├── challenge-level2.spec.ts      # Integration tests — L1 Cache Layer
+│   │   ├── challenge-level3.spec.ts      # Integration tests — L2 Two Backends
+│   │   ├── challenge-level4.spec.ts      # Integration tests — L3 Smart Routes
+│   │   ├── challenge-level5.spec.ts      # Integration tests — L4 Write Buffer
+│   │   ├── challenge-level6.spec.ts      # Integration tests — L5 The Gateway
+│   │   ├── challenge-level7.spec.ts      # Integration tests — L6 Scale + Cache / L7 Two Paths
+│   │   └── challenge-level8.spec.ts      # Integration tests — L8 Full Stack
 │   ├── tutorial/
 │   │   ├── tutorial.model.ts             # TutorialStep type — title, description, hint, realWorldNote
 │   │   ├── tutorial.service.ts           # Step sequencing (computed signals), board init, completion tracking
@@ -122,6 +126,7 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 - `pathNotExists`: inverse — the sequence must NOT be reachable
 - `filteredPathExists`: like `pathExists` for a single hop, but also requires the connection's `filter.methods` to match `requiredMethods` exactly
 - `availableResources: { type, count }[]` limits what the player can place (enforced by palette); sized for the ★2 over-engineered solution (the largest topology), since ★3 uses a subset of those same resources more cleverly
+- Pre-placed services with `locked: true` cannot be moved or deleted during a challenge; challenge connections remain editable because several solutions require removing or re-routing them
 - `sustainMs`: only valid when a condition genuinely must hold over time — never the sole differentiator between two star tiers
 - Level N+1 unlocks when level N has ≥ 1 star
 - Progress persisted to localStorage via `StorageKeys.CHALLENGE_PROGRESS`
@@ -139,7 +144,7 @@ Defined in `challenge-definitions.ts` — pure data, JSON-serializable, no logic
 - ★2 = "correct but over-engineered" — fully solves the problem but uses too many resources or routes naively; expensive to run, harder to maintain
 - ★3 = "smart and optimal" — fewest components at full purpose, explicit configuration (method-level filters); nothing left to chance
 
-**9-level progression (3×3 grid):**
+**8-level progression:**
 
 > L1 (Hello Backend) removed — its role as mechanic teacher is now the `/tutorial`.
 > Cache Layer kept as the first challenge (L1): while the topology mirrors the tutorial, the
@@ -164,7 +169,6 @@ Row 3 — Advanced:
 |---|------|------------|-----------|---------------|
 | 7 | Two Paths | Origin, REST₁, REST₂, DB | Origin→REST₁, Origin→REST₂ | 1 Cache, 1 MQ |
 | 8 | Full Stack | Origin, DB | — | 1 GW, 1 LB, 2 REST, 1 Cache, 1 MQ |
-| 9 | TBD | — | — | — |
 
 **Per-level solution topologies:**
 
@@ -218,8 +222,6 @@ The system checks ★3 first; the first matching tier wins. Each star is a fork 
 > - ★2 "Use everything": `pathExists([Origin, GW, LB, REST]) >= 2` + `pathExists([REST, Cache, DB])` + `pathExists([REST, MQ, DB])` — all components placed and wired but no method filters; expensive and naive
 > - ★3 "Production ready": `pathExists([Origin, GW, LB, REST]) >= 2` + `filteredPathExists([REST, Cache], [GET])` + `filteredPathExists([REST, MQ], [POST,PUT,DELETE])` — both backends, cache GET-only, MQ write-only
 
-> **L9** — TBD (design pending)
-
 ### Tutorial System
 
 Interactive, step-by-step introduction to all 4 player verbs. Uses the Cache Layer topology as its teaching scenario (same as old Challenge 2 — the simplest setup that requires every mechanic).
@@ -237,27 +239,9 @@ Interactive, step-by-step introduction to all 4 player verbs. Uses the Cache Lay
 
 **Home page gating:** If `TUTORIAL_COMPLETE` is not set, Sandbox and Challenges cards are shown as locked with a "Complete the tutorial first" tooltip. The Tutorial card is always accessible.
 
-### Insight Pills
+### Deferred ideas
 
-A two-layer contextual learning system. Surfaces real-world concepts at the moment they're relevant — never interrupts flow.
-
-**Layer 1 — Inspector "About" section**
-When any service or connection is selected, a collapsed "About" section appears below the live stats panel. Always available, zero friction.
-- For services: real-world name, canonical examples (Redis, RabbitMQ, nginx/Envoy), one-line concept
-- For connections with a route rule active: "This is how API gateways route traffic — nginx, Envoy, and Kong all work this way"
-
-**Layer 2 — Discovery toasts**
-First-time pattern recognition triggers a brief toast (3s, dismissible). Only fires once per pattern per player session (tracked in localStorage via `InsightService`).
-
-Trigger examples:
-- First cache HIT → explain hit rate and why it matters at scale
-- Queue overflow → "This is backpressure — your DB can't keep up with write load"
-- Completing a recognizable pattern (read-through cache, pub-sub, load-balanced cluster) → name the pattern + one real-world context sentence
-- First route rule set → "Route rules like this power API gateways — Netflix's Zuul routes millions of requests this way"
-
-**Content lives in** `core/insights/insight-definitions.ts` — pure data, keyed by trigger ID. `InsightService` evaluates triggers from game events and emits new `InsightDefinition` objects to subscribers.
-
-**Categories:** `service` · `pattern` · `mechanic` · `failure`
+The project is intentionally feature-complete for its portfolio role. Ideas such as contextual insight toasts, service configuration editing, batch rendering, and advanced load-balancer strategies are optional future experiments, not required functionality. Keep them out of the maintenance path unless the project is deliberately reopened for another creative pass.
 
 ### Service Types
 
@@ -310,13 +294,11 @@ Do these at the end of a long session or every ~10 commits:
 - Glassmorphism panels (palette, inspector, overlays)
 - `styles.scss` — TailwindCSS + CSS custom properties for the color palette
 
-## Roadmap
+## Maintenance posture
 
-### Next
-1. **Challenges L4–L8 spec tests** — definitions exist in `challenge-definitions.ts`; add `challenge-level4.spec.ts` through `challenge-level8.spec.ts` to verify each level's three solution topologies
-2. **Insight Pills** — Inspector "About" section + discovery toasts; `InsightService` + `insight-definitions.ts` in `core/insights/`
-3. Service configuration editing (processing time, queue size per service)
-4. Batch rendering at high throughput (one ball = N requests)
+The current baseline is eight playable challenges, an interactive tutorial, a sandbox, and a deterministic integration-test suite. Normal maintenance consists of dependency updates, browser compatibility fixes, deployment checks, and regressions in the simulation or challenge rules.
+
+Before committing changes, run `bun run check`, `bun run test`, and `bun run build`.
 
 ### Simulation Engine Improvements
 - **Load Balancer routing strategies** — currently LB uses the same weighted-random `pickConnection()` as all services. Add LB-specific algorithms (round-robin, least-connections) so players can learn the difference. Low priority since current challenges test LB *topology*, not algorithm.
@@ -324,7 +306,7 @@ Do these at the end of a long session or every ~10 commits:
 - **Immutable tick processing** — `SimRequest` objects are mutated in place during `processSimulation`. No bug (ticks are synchronous), but prevents replay/serialization of mid-tick state. Revisit if adding time-travel debugging or multiplayer.
 - **Queue sync optimization** — `requests.includes(r)` in runtime state cleanup is O(n×m). Replace with a Set-based lookup if request volume grows past ~200 active requests.
 
-### Future
+### Optional future experiments
 - Responsive grid (zoom/pan)
 - Cascading failure visualization (domino effect)
 - Landing page with live demo

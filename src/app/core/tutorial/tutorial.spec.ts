@@ -183,17 +183,21 @@ describe('TutorialService:step detection', () => {
         });
 
         it('does not complete with POST-only filter', () => {
-            const conn = gameState
-                .connections()
-                .find((c) => c.source.serviceId === rest().id && c.target.serviceId === cache().id)!;
+            const conn = mustFind(
+                gameState.connections(),
+                (c) => c.source.serviceId === rest().id && c.target.serviceId === cache().id,
+                'REST→Cache connection',
+            );
             gameState.updateConnectionFilter(conn.id, { methods: [RequestMethod.POST], weight: 100 });
             expect(tutorial.step5()).toBe(false);
         });
 
         it('does not complete with GET + POST filter (must be GET exclusively)', () => {
-            const conn = gameState
-                .connections()
-                .find((c) => c.source.serviceId === rest().id && c.target.serviceId === cache().id)!;
+            const conn = mustFind(
+                gameState.connections(),
+                (c) => c.source.serviceId === rest().id && c.target.serviceId === cache().id,
+                'REST→Cache connection',
+            );
             gameState.updateConnectionFilter(conn.id, {
                 methods: [RequestMethod.GET, RequestMethod.POST],
                 weight: 100,

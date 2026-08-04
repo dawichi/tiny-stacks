@@ -13,6 +13,8 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
       class="service absolute rounded-lg flex flex-col items-center justify-center cursor-grab
              transition-shadow duration-150 hover:scale-[1.02] hover:shadow-lg overflow-hidden"
       (mousedown)="onServiceMouseDown($event)"
+      [class.cursor-not-allowed]="locked()"
+      [attr.aria-disabled]="locked()"
       [class.ring-2]="isSelected()"
       [class.ring-blue-500]="isSelected()"
       [class.ring-offset-2]="isSelected()"
@@ -130,6 +132,7 @@ export class ServiceComponent {
     readonly runtimeVisual = input<ServiceVisualState | null>(null);
     readonly simulationRunning = input<boolean>(false);
     readonly originRps = input<number | null>(null);
+    readonly locked = input(false);
 
     // ── Outputs ────────────────────────────────────────────────────────
     readonly portDragStart = output<{ serviceId: string; portIndex: number }>();
@@ -239,6 +242,7 @@ export class ServiceComponent {
 
     protected onServiceMouseDown(event: MouseEvent): void {
         event.preventDefault();
+        if (this.locked()) return;
         this.moveDragStart.emit({ serviceId: this.service().id });
     }
 

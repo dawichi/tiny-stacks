@@ -1,4 +1,5 @@
 import { Component, computed, HostListener, inject, signal } from '@angular/core';
+import { ChallengeService } from '../../core/challenges/challenge.service';
 import { GameStateService, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
@@ -35,6 +36,7 @@ export class GameBoardComponent {
     // ── Injected Services ──────────────────────────────────────────────
     protected readonly gameState = inject(GameStateService);
     protected readonly simulation = inject(TickEngineService);
+    private readonly challengeService = inject(ChallengeService);
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);
@@ -290,7 +292,7 @@ export class GameBoardComponent {
 
     // ── Move drag ─────────────────────────────────────────────────────
     protected onMoveDragStart(event: { serviceId: string }): void {
-        if (this.connectionDragSource()) return;
+        if (this.connectionDragSource() || this.isServiceLocked(event.serviceId)) return;
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
@@ -298,6 +300,10 @@ export class GameBoardComponent {
 
     protected getServiceVisual(serviceId: string): ServiceVisualState | null {
         return this.simulation.serviceVisuals().get(serviceId) ?? null;
+    }
+
+    protected isServiceLocked(serviceId: string): boolean {
+        return this.challengeService.lockedServiceIds().has(serviceId);
     }
 
     protected getOriginRps(serviceId: string, type: ServiceType): number | null {

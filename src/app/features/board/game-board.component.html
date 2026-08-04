@@ -59,6 +59,7 @@
       [runtimeVisual]="getServiceVisual(service.id)"
       [simulationRunning]="simulation.running()"
       [originRps]="getOriginRps(service.id, service.type)"
+      [locked]="isServiceLocked(service.id)"
       (click)="onServiceClick(service.id)"
       (portDragStart)="onPortDragStart($event)"
       (portDragEnd)="onPortDragEnd($event)"
