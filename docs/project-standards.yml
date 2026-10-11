@@ -26,106 +26,371 @@ profiles:
   - angular-application
 
 compliance:
-  audit_status: partial
+  audit_status: complete
   audit_scope: >-
-    All DOC rules and the directly verified test, CI, data-ownership,
-    security-context, Angular-boundary, and deployment rules are recorded below.
-    Other selected rules have not had a rule-by-rule assessment in this
-    documentation-focused session; see TINY-002.
+    All 100 rules in the selected standards and Angular application profile at
+    the pinned revision were assessed against repository source, configuration,
+    documentation, local validation, dependency metadata, and read-only platform
+    inspection. Partial findings, gaps, and deferred migrations are linked to
+    docs/work/TODO.md. A successful GitHub Actions run for the newly added test
+    step and a rendered accessibility audit remain unverified because this work
+    was kept local and the preview snapshot tool timed out.
   rules:
     - id: DOC-001
       status: compliant
-      evidence: docs/AGENTS.md
+      evidence: "docs/AGENTS.md provides the repository-specific agent reading order and working rules."
     - id: DOC-002
       status: compliant
-      evidence: docs/README.md
+      evidence: "docs/README.md indexes the current architecture, gameplay, design, operations, standards, and work references."
     - id: DOC-003
       status: compliant
-      evidence: docs/AGENTS.md, docs/README.md, and topic ownership links
+      evidence: "docs/AGENTS.md names source-of-truth ownership and links to topic documents."
     - id: DOC-004
       status: compliant
-      evidence: Local links in maintained Markdown resolve within the repository.
+      evidence: "Maintained Markdown links were reviewed during the documentation restructure; no broken local link is known."
     - id: DOC-005
       status: compliant
-      evidence: docs/architecture/, docs/gameplay/, docs/design/, and docs/operations/ reflect inspected source and configuration.
+      evidence: "docs/architecture/, docs/gameplay/, docs/design/, and docs/operations/ describe the inspected implementation and configuration."
     - id: DOC-006
       status: compliant
-      evidence: docs/work/TODO.md; obsolete roadmap bullets were removed from the UI map.
+      evidence: "docs/work/TODO.md is the authoritative queue; obsolete roadmap notes were removed from current-state documentation."
     - id: DOC-007
       status: compliant
-      evidence: Project-specific facts remain in this repository.
+      evidence: "Project-specific facts and operating guidance remain in this repository."
     - id: DOC-008
       status: compliant
-      evidence: No exceptions are claimed; known gaps are recorded in docs/work/TODO.md.
+      evidence: "Known standards gaps are recorded in docs/work/TODO.md; no standards exception is claimed."
     - id: DOC-009
       status: compliant
-      evidence: README.md covers purpose, setup, commands, repository structure, and detailed docs.
+      evidence: "README.md covers the product, setup, commands, repository layout, and documentation entry point."
     - id: DOC-010
       status: compliant
-      evidence: README.md is player-facing; docs/AGENTS.md and docs/README.md own detailed agent and developer guidance.
+      evidence: "README.md is player-facing; docs/AGENTS.md and docs/README.md provide developer and agent guidance."
     - id: DOC-011
       status: compliant
-      evidence: docs/work/TODO.md is the repository-local unfinished-work queue.
+      evidence: "docs/work/README.md and docs/work/TODO.md define the local unfinished-work system."
+    - id: TEST-001
+      status: partial
+      evidence: "Eight Vitest spec files cover tutorial and challenge services; there are no integration or end-to-end tests for the main player journeys."
+      priority: medium
+      next_action: "Add risk-appropriate storage and user-journey coverage in TINY-005."
+    - id: TEST-002
+      status: not applicable
+      evidence: "This work corrects stale test expectations against current tutorial and challenge definitions; no reproducible product behavior defect is being fixed."
+    - id: TEST-003
+      status: compliant
+      evidence: "The suite uses local deterministic fixtures without network or wall-clock dependencies; repeated runs are part of final validation."
+    - id: TEST-004
+      status: compliant
+      evidence: "Challenge and tutorial assertions check topology, progression, filters, and scoring outcomes through public service behavior."
+    - id: TEST-005
+      status: partial
+      evidence: "The 51 tests cover challenge and tutorial behavior, but storage sanitizers and persistence recovery have no dedicated tests."
+      priority: medium
+      next_action: "Add storage-boundary and persisted-state regression coverage in TINY-005."
     - id: TEST-006
-      status: gap
-      evidence: >-
-        package.json and README.md document bun run test, but
-        .github/workflows/ci.yml does not run it.
+      status: partial
+      evidence: "package.json documents bun run test and .github/workflows/ci.yml now invokes it; local execution passes 51 tests, but the new workflow step has no GitHub Actions result yet."
       priority: medium
-      next_action: Track and implement TINY-001.
+      next_action: "Inspect the next naturally triggered GitHub Actions run; do not push solely for this check because main deploys to production."
+    - id: TEST-007
+      status: not applicable
+      evidence: "The automated suite does not call external services; all current tests use local game state and deterministic fixtures."
     - id: TEST-008
-      status: compliant
-      evidence: >-
-        GitHub Actions runs bun run build as an automated validation suite.
-        This does not replace the existing unit-test command.
-    - id: CI-001
-      status: compliant
-      evidence: .github/workflows/ci.yml runs on pushes, pull requests, and manual dispatch.
-    - id: CI-002
-      status: gap
-      evidence: >-
-        CI installs dependencies, runs Biome checks, and builds. It omits the
-        existing unit-test command and no dependency/security scan is configured
-        in the repository workflow.
+      status: partial
+      evidence: "The repository has unit tests plus check/build validation in CI configuration and all pass locally; no GitHub run has exercised the new test step yet."
       priority: medium
-      next_action: Track test execution in TINY-001; assess dependency scanning in TINY-002.
-    - id: CI-003
+      next_action: "Verify the next naturally triggered GitHub Actions run under TINY-003."
+    - id: TS-001
       status: compliant
-      evidence: >-
-        package.json pins bun@1.3.4; CI uses Bun 1.3.4 and
-        bun install --frozen-lockfile with the committed bun.lock.
-    - id: CI-005
+      evidence: "tsconfig.json enables strict TypeScript and strict Angular template, injection, and input-access checks; bun run build and bun run test compile successfully."
+    - id: TS-002
       status: compliant
-      evidence: ".github/workflows/ci.yml grants contents: read and has no deployment credentials."
+      evidence: "Source search found no explicit any or TypeScript suppression directives in application source."
+    - id: TS-003
+      status: compliant
+      evidence: "Core game, simulation, challenge, storage, and component boundaries use exported interfaces, enums, unions, and typed function signatures."
+    - id: TS-004
+      status: compliant
+      evidence: "ChallengePhase, service/request enums, and tutorial/challenge state types represent meaningful domain states explicitly."
+    - id: TS-005
+      status: partial
+      evidence: "localStorage, service-type, route, slider, and connection inputs are validated or narrowed; storage sanitizer edge cases are not covered by dedicated tests."
+      priority: medium
+      next_action: "Add malformed and boundary-value tests for persisted and user-controlled state in TINY-005."
+    - id: TS-006
+      status: compliant
+      evidence: "storage-schema.ts uses small explicit type guards and domain validators, an adequate runtime validation solution for this local versioned storage format."
+    - id: TS-007
+      status: compliant
+      evidence: "tsconfig files, biome.json, angular.json, and package scripts are committed and run from the repository."
+    - id: TS-008
+      status: compliant
+      evidence: "Biome is the single formatter/linter/check tool and bun run check is the documented local and CI command."
+    - id: TS-009
+      status: deferred
+      evidence: "noPropertyAccessFromIndexSignature is enabled, but noUncheckedIndexedAccess is not; migrating this existing application requires handling indexed reads across the codebase."
+      priority: medium
+      next_action: "Enable noUncheckedIndexedAccess and resolve resulting errors in a focused migration under TINY-006."
+    - id: TS-010
+      status: deferred
+      evidence: "noImplicitOverride, noImplicitReturns, and noFallthroughCasesInSwitch are enabled; noUnusedLocals and noUnusedParameters are not enabled in the existing project."
+      priority: medium
+      next_action: "Enable the remaining unused-code compiler checks and resolve findings under TINY-006."
+    - id: TS-011
+      status: partial
+      evidence: "exactOptionalPropertyTypes is not enabled; persisted and domain models use optional fields, and no impact review is documented."
+      priority: low
+      next_action: "Assess exact optional-property semantics during the TypeScript migration in TINY-006."
     - id: SEC-001
       status: compliant
-      evidence: docs/architecture/overview.md documents browser, local-storage, GitHub, and Vercel boundaries.
-    - id: DATA-001
+      evidence: "docs/architecture/overview.md and docs/operations/deployment.md document browser storage, external actors, GitHub CI, Vercel hosting, and ownership boundaries."
+    - id: SEC-002
+      status: not applicable
+      evidence: "The application and workflow define no project-managed runtime secrets or credentials; the GitHub-to-Vercel integration is managed externally and is not exposed in the client bundle."
+    - id: SEC-003
+      status: not applicable
+      evidence: "The application has no accounts, authenticated resources, privileged actions, or service-to-service identity."
+    - id: SEC-004
+      status: partial
+      evidence: "Angular interpolation and domain guards protect rendered/user-controlled values, and storage reads are sanitized; negative tests for malformed persisted inputs are missing."
+      priority: medium
+      next_action: "Add rejection and recovery tests for untrusted storage and input in TINY-005."
+    - id: SEC-005
+      status: not applicable
+      evidence: "The game stores only player-created simulation state and progress in that player's browser; it does not process personal, financial, confidential, or credential data."
+    - id: SEC-006
+      status: not applicable
+      evidence: "There is no deployed application logger, API, job, or server response; bootstrap failures use a generic console error and the app handles local parse failure by clearing the invalid key."
+    - id: SEC-007
+      status: partial
+      evidence: "GitHub Actions sets contents: read and uses no deployment secret; Vercel owns an external Git integration whose granted scope and review history are not recorded here."
+      priority: medium
+      next_action: "Review GitHub/Vercel integration scopes and document the release boundary in TINY-003."
+    - id: SEC-008
+      status: partial
+      evidence: "The public client validates local storage and user input, but automated negative tests for malformed state, rejection, and recovery are absent."
+      priority: medium
+      next_action: "Add repeatable security-boundary tests in TINY-005."
+    - id: SEC-009
+      status: gap
+      evidence: "bun audit is available and was run; after compatible upgrades it reports 80 advisories (28 high, 46 moderate, 6 low) and no critical advisories. GitHub vulnerability alerts/security updates are disabled and no response process is documented."
+      priority: high
+      next_action: "Establish dependency monitoring, ownership, triage, and a severity policy in TINY-003."
+    - id: DEP-001
       status: compliant
-      evidence: >-
-        docs/architecture/overview.md identifies browser storage ownership,
-        storage keys, schema validation, and lifecycle.
+      evidence: "package.json and bun.lock commit declared versions, resolved versions, and package integrity metadata."
+    - id: DEP-002
+      status: compliant
+      evidence: "GitHub Actions runs bun install --frozen-lockfile; a local frozen install succeeds without lockfile changes."
+    - id: DEP-003
+      status: partial
+      evidence: "package.json pins Bun 1.3.4 and CI selects the same version; the Vercel-managed build runtime version was not independently verified."
+      priority: low
+      next_action: "Verify the detected Vercel package-manager/runtime version and record it in TINY-003."
+    - id: DEP-004
+      status: compliant
+      evidence: "bun pm untrusted reports only @parcel/watcher's blocked build-from-source script; installation, tests, and build succeed without trusting it."
+    - id: DEP-005
+      status: compliant
+      evidence: "The unused @angular/forms direct dependency was removed; remaining direct dependencies are used by Angular, the simulator, styling, icons, or build configuration."
+    - id: DEP-006
+      status: partial
+      evidence: "The lockfile can be scanned with bun audit and a current audit was triaged; no automated scan or alert workflow exists and high/moderate advisories remain in build/test tooling."
+      priority: high
+      next_action: "Add owned dependency alerts and a documented remediation workflow in TINY-003."
+    - id: DEP-007
+      status: compliant
+      evidence: "Bun is the selected package manager in package.json and is used consistently for local commands, CI, and the committed bun.lock."
+    - id: CI-001
+      status: compliant
+      evidence: "The single GitHub Actions workflow runs for pushes, pull requests, and manual dispatch and reports a job result."
+    - id: CI-002
+      status: partial
+      evidence: "CI installs reproducibly, checks source, runs tests, and builds; it does not scan dependencies, and the new test step has not yet run on GitHub."
+      priority: high
+      next_action: "Add dependency scanning and complete the release gate decision in TINY-003."
+    - id: CI-003
+      status: compliant
+      evidence: "CI pins Ubuntu, Bun 1.3.4, the committed lockfile, and frozen installation; the same Bun version and commands pass locally."
+    - id: CI-004
+      status: gap
+      evidence: "The main branch has no required status-check protection and a push to main deploys production through Vercel before CI can block that push."
+      priority: high
+      next_action: "Choose and configure a protected release path with required checks, or document an explicit exception, in TINY-003."
+    - id: CI-005
+      status: compliant
+      evidence: "The workflow grants contents: read, uses no secrets, and exposes no write/deployment credential to pull-request code."
+    - id: CI-006
+      status: compliant
+      evidence: "CI is a single lightweight job; the latest inspected remote run completed in about 19 seconds, so a matrix or cache is not currently justified."
+    - id: CI-007
+      status: compliant
+      evidence: "GitHub Actions exposes job logs and historical run results; the existing one-job pipeline needs no separate build artifact to diagnose its checks."
+    - id: OPS-001
+      status: not applicable
+      evidence: "The static browser app has no runtime environment configuration or startup process."
     - id: OPS-002
       status: compliant
-      evidence: docs/operations/deployment.md distinguishes local development, GitHub CI, and Vercel production.
+      evidence: "docs/operations/deployment.md distinguishes local development, GitHub CI, and Vercel production behavior."
+    - id: OPS-003
+      status: not applicable
+      evidence: "The browser application makes no external network, database, queue, or filesystem service calls."
+    - id: OPS-004
+      status: not applicable
+      evidence: "The application has no external operation retry logic."
+    - id: OPS-005
+      status: not applicable
+      evidence: "The deployed artifact is a static frontend, not a long-running service or worker requiring readiness signaling."
+    - id: OPS-006
+      status: not applicable
+      evidence: "There is no deployed server or worker process to shut down."
+    - id: OPS-007
+      status: not applicable
+      evidence: "The static frontend has no deployed application runtime logging or background jobs; Vercel platform logs belong to the hosting provider."
+    - id: OPS-008
+      status: not applicable
+      evidence: "This personal static game has no meaningful service availability, processing, or infrastructure-cost commitment that warrants custom metrics or SLOs."
     - id: OPS-009
       status: compliant
-      evidence: docs/operations/deployment.md documents Vercel inspection and rollback steps; app data is browser-owned.
+      evidence: "docs/operations/deployment.md documents Vercel deployment inspection and rollback; docs/architecture/overview.md states that player state remains browser-owned."
+    - id: DATA-001
+      status: compliant
+      evidence: "docs/architecture/overview.md identifies localStorage keys, schemas, owner, validation, persistence, and reset lifecycle."
+    - id: DATA-002
+      status: partial
+      evidence: "Sandbox state has a version field and sanitizer that migrates unversioned v0 saves to v1 and rejects unknown versions; migration and corruption behavior lack dedicated tests."
+      priority: medium
+      next_action: "Add legacy/current/unknown-schema tests in TINY-005."
+    - id: DATA-003
+      status: not applicable
+      evidence: "There is no relational or constraint-capable persistence layer; local browser state is validated by storage-schema.ts."
+    - id: DATA-004
+      status: not applicable
+      evidence: "State is held in one synchronous browser localStorage boundary; there are no multi-store or asynchronous consistency paths."
+    - id: DATA-005
+      status: not applicable
+      evidence: "The app has no persistent queryable collection or database."
+    - id: DATA-006
+      status: not applicable
+      evidence: "The cache service exists only inside the simulated game domain; the app does not use a cache or materialized read store for its own data."
+    - id: DATA-007
+      status: not applicable
+      evidence: "Player progress is low-impact local game state with no server-side durability promise; docs state that clearing browser storage loses it and no backup is offered."
+    - id: STYLE-001
+      status: compliant
+      evidence: "Tailwind CSS is the primary shared styling system; component CSS is limited to feature-specific details."
+    - id: STYLE-002
+      status: compliant
+      evidence: "Tailwind was intentionally selected and is consistently configured through the PostCSS plugin."
+    - id: STYLE-003
+      status: compliant
+      evidence: "Custom styles support the landing-page illustration/cards, game visuals, and component-specific animation where utility classes are not suitable."
+    - id: STYLE-004
+      status: compliant
+      evidence: "Tailwind utilities and component-scoped CSS have clear boundaries and do not constitute competing design systems."
+    - id: STYLE-005
+      status: compliant
+      evidence: "lucide-angular provides the coherent general-purpose icon set used across the application."
+    - id: STYLE-006
+      status: compliant
+      evidence: "Custom styles live with their owning components or in src/styles.css for shared primitives; no global competing theme is present."
+    - id: A11Y-001
+      status: partial
+      evidence: "Tutorial, sandbox, and challenge detail use main landmarks; the home and challenge-list roots are generic divs, and no rendered accessibility-tree audit was retained."
+      priority: medium
+      next_action: "Add complete landmarks and verify representative page structure in TINY-004."
+    - id: A11Y-002
+      status: gap
+      evidence: "Service placement, moving, port connection, and connection selection rely on mouse/pointer handlers; essential builder interactions are not keyboard-operable."
+      priority: high
+      next_action: "Design and implement keyboard operation with visible focus for the builder and complete keyboard-only journeys in TINY-004."
+    - id: A11Y-003
+      status: partial
+      evidence: "Most controls have visible labels, but settings and inspector icon-only close buttons lack accessible names and several controls have no explicit label association."
+      priority: medium
+      next_action: "Label icon-only controls and verify the accessibility tree and status/error announcements in TINY-004."
+    - id: A11Y-004
+      status: compliant
+      evidence: "The home logo has alt text, the decorative network SVG is aria-hidden, and Lucide icons generally accompany visible link or button text."
+    - id: A11Y-005
+      status: partial
+      evidence: "The product declares desktop-only use and enforces a screen-width guard; no zoom/contrast review or prefers-reduced-motion treatment is documented."
+      priority: medium
+      next_action: "Review supported viewport, zoom, contrast, and motion behavior in TINY-004."
+    - id: A11Y-006
+      status: gap
+      evidence: "There is no recorded manual keyboard or assistive-technology review for tutorial, sandbox, or challenge journeys."
+      priority: high
+      next_action: "Perform and retain a manual accessibility review of critical journeys in TINY-004."
+    - id: WEB-001
+      status: gap
+      evidence: "No Lighthouse or equivalent rendered-page audit configuration or retained report exists; the local collaborative browser snapshot timed out during this assessment."
+      priority: medium
+      next_action: "Run and retain a production-like audit for representative routes in TINY-004."
+    - id: WEB-002
+      status: gap
+      evidence: "There is no release checklist or scheduled rendered-page audit cadence."
+      priority: medium
+      next_action: "Add pre-release and periodic audit cadence after the first route audit in TINY-004."
+    - id: WEB-003
+      status: gap
+      evidence: "The app has home, tutorial, sandbox, challenge-list, and challenge-detail routes; none is covered by a retained rendered-page audit."
+      priority: medium
+      next_action: "Audit representative routes for the primary user journeys in TINY-004."
+    - id: WEB-004
+      status: not applicable
+      evidence: "No rendered-page audit reports exist yet; apply retention and trend review once WEB-001 is implemented."
     - id: ANGULAR-001
       status: compliant
-      evidence: src/app/core/ and src/app/features/ separate shared rules from game screens.
+      evidence: "src/app/core/ separates shared domain/state from src/app/features/ screens and bounded UI features."
+    - id: ANGULAR-002
+      status: compliant
+      evidence: "Game rules and simulation are isolated in core services/modules; components primarily present state and orchestrate input."
+    - id: ANGULAR-003
+      status: compliant
+      evidence: "Typed inputs/outputs, router APIs, domain interfaces, strict TypeScript, and strict Angular compiler options are in use."
+    - id: ANGULAR-004
+      status: compliant
+      evidence: "The tutorial is an explicit multi-step workflow driven by TutorialService state; there are no complex forms requiring Reactive Forms."
+    - id: ANGULAR-005
+      status: compliant
+      evidence: "Tailwind CSS and Lucide were intentionally selected and are used consistently."
+    - id: ANGULAR-006
+      status: partial
+      evidence: "Storage sanitizers and domain guards validate runtime input, but invalid-storage and malformed-input paths lack focused tests."
+      priority: medium
+      next_action: "Add boundary validation and rejection tests in TINY-005."
     - id: ANGULAR-007
       status: compliant
-      evidence: docs/architecture/overview.md documents shared board, mode, and persistence ownership.
+      evidence: "docs/architecture/overview.md describes board, challenge, tutorial, simulation, and persistence ownership and lifecycle."
     - id: ANGULAR-008
       status: compliant
-      evidence: src/app/core/game/simulation.ts contains framework-independent simulation logic.
+      evidence: "src/app/core/game/simulation.ts and challenge evaluation are independently testable; unit specs exercise tutorial and challenge behavior."
+    - id: ANGULAR-009
+      status: not applicable
+      evidence: "There are no route guards, interceptors, or external-data effects; route parameters are subscribed with takeUntilDestroyed."
+    - id: ANGULAR-010
+      status: compliant
+      evidence: "TickEngine uses DestroyRef cleanup; route subscriptions use takeUntilDestroyed and screen/tutorial/sandbox components implement teardown."
+    - id: ANGULAR-011
+      status: partial
+      evidence: "Tutorial and challenge domain logic has unit coverage, but no end-to-end tests cover complete visible user journeys."
+      priority: medium
+      next_action: "Add a controlled critical-journey suite in TINY-005."
     - id: ANGULAR-012
       status: compliant
-      evidence: tsconfig.json enables strict Angular template, injection, and input-access checks.
+      evidence: "tsconfig.json enables strictTemplates, strictInjectionParameters, and strictInputAccessModifiers; production build passes."
+    - id: ANGULAR-013
+      status: not applicable
+      evidence: "The app has no authenticated users or protected capabilities."
+    - id: ANGULAR-014
+      status: not applicable
+      evidence: "The app does not load or mutate external asynchronous data; timed simulation is local and its run state is explicit."
     - id: ANGULAR-015
       status: compliant
-      evidence: docs/architecture/overview.md records scope, owner, persistence, and reset behavior for client state.
+      evidence: "Client state scope, owner, persistence, and reset behavior are documented; localStorage is browser-local."
 
 exceptions: []
-deferred_work: []
+deferred_work:
+  - TINY-006: Adopt the remaining recommended TypeScript compiler checks in the existing codebase.

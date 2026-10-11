@@ -20,7 +20,7 @@ This is the canonical project-specific instruction file for AI agents working in
 - Local development, CI, Vercel deployment, and recovery: [deployment guide](operations/deployment.md).
 - Unfinished work: [work queue](work/TODO.md).
 - Effective shared engineering guidance and assessed compliance: [standards contract](project-standards.yml), pinned to the revision recorded there.
-- Selected standards: documentation, testing, TypeScript, security, dependencies, CI/CD, operations, data, styling, and web quality; selected profile: Angular application. The contract marks the assessment scope and rules that remain unreviewed.
+- Selected standards: documentation, testing, TypeScript, security, dependencies, CI/CD, operations, data, styling, and web quality; selected profile: Angular application. The contract assesses every rule in the pinned revision and links remaining gaps and deferred migrations to the work queue.
 - Implementation is authoritative for current behavior. Update the relevant documentation when behavior or architecture changes.
 
 ## Working rules
@@ -43,8 +43,9 @@ This is the canonical project-specific instruction file for AI agents working in
 | Lint and format check | `bun run check` |
 | Production build | `bun run build` |
 | Unit tests | `bun run test` |
+| Dependency audit | `bun audit` |
 
-GitHub Actions runs the locked install, `bun run check`, `bun run test`, and `bun run build`. The CI pipeline and deploy facts are documented in [operations](operations/deployment.md).
+GitHub Actions runs the locked install, `bun run check`, `bun run test`, and `bun run build`. `bun audit` is available for dependency triage but is not a CI gate yet; the assessment and remaining security work are tracked in the [standards contract](project-standards.yml) and [work queue](work/TODO.md). The CI pipeline and deploy facts are documented in [operations](operations/deployment.md).
 
 ## Safe change boundaries
 

@@ -5,7 +5,7 @@ This directory contains tiny-stacks' current architecture, gameplay references, 
 ## Start here
 
 - [Agent instructions](AGENTS.md) — reading order, sources of truth, safe boundaries, and validation commands.
-- [Standards contract](project-standards.yml) — pinned Engineering Standards source, selected standards, known compliance, and open assessment scope.
+- [Standards contract](project-standards.yml) — pinned Engineering Standards source, selected standards, completed rule-by-rule assessment, and recorded compliance gaps.
 - [Work system](work/README.md) and [work queue](work/TODO.md) — unfinished project and standards work.
 
 ## Project references

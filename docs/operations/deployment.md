@@ -16,12 +16,15 @@ The development server uses `http://localhost:4200`.
 | Lint and format check | `bun run check` |
 | Production build | `bun run build` |
 | Unit tests | `bun run test` |
+| Dependency audit | `bun audit` |
 
 ## Continuous integration
 
 GitHub Actions runs on pushes, pull requests, and manual dispatch. It uses Ubuntu, Bun `1.3.4`, and `bun install --frozen-lockfile`, then runs `bun run check`, `bun run test`, and `bun run build`.
 
 The test command runs the repository's Vitest suite. Run `bun run test` locally to execute the same test step used in CI.
+
+Run `bun audit` to inspect vulnerabilities in the locked dependency tree. It is a manual review step and is not a CI gate yet; dependency-alert configuration, triage ownership, and the scan policy are tracked as `TINY-003` in the [work queue](../work/TODO.md).
 
 ## Production deployment
 
