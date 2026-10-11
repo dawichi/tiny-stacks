@@ -33,6 +33,14 @@ describe('TutorialService:step detection', () => {
     const db = () => mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'DB');
     const cache = () => mustFind(gameState.services(), (s) => s.type === ServiceType.CACHE, 'Cache');
 
+    const removeOriginToDB = () => {
+        const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'Origin');
+        const connection = gameState
+            .connections()
+            .find((c) => c.source.serviceId === origin.id && c.target.serviceId === db().id);
+        if (!connection) throw new Error('Origin→DB backdoor not found');
+        gameState.removeConnection(connection.id);
+    };
     const placeCache = () => mustPlace(gameState, ServiceType.CACHE, 10, 5);
     const connectRestToCache = () =>
         mustConnect(gameState, { serviceId: rest().id, portIndex: 1 }, { serviceId: cache().id, portIndex: 0 });
@@ -45,14 +53,6 @@ describe('TutorialService:step detection', () => {
         if (!conn) throw new Error('REST→Cache connection not found');
         gameState.updateConnectionFilter(conn.id, { methods: [RequestMethod.GET], weight: 100 });
     };
-    const removeRestToDB = () => {
-        const conn = gameState
-            .connections()
-            .find((c) => c.source.serviceId === rest().id && c.target.serviceId === db().id);
-        if (!conn) throw new Error('REST→DB connection not found');
-        gameState.removeConnection(conn.id);
-    };
-
     // ── Initial state ────────────────────────────────────────────────────
 
     describe('initial state after init()', () => {
@@ -60,8 +60,9 @@ describe('TutorialService:step detection', () => {
             expect(gameState.services()).toHaveLength(3);
         });
 
-        it('pre-draws 2 connections (Origin→REST, REST→DB)', () => {
-            expect(gameState.connections()).toHaveLength(2);
+        it('pre-draws 3 connections, including the Origin→DB backdoor', () => {
+            expect(gameState.connections()).toHaveLength(3);
+            expect(tutorial.step1()).toBe(false);
         });
 
         it('starts at step index 0 with no steps complete', () => {
@@ -71,34 +72,33 @@ describe('TutorialService:step detection', () => {
         });
     });
 
-    // ── Step 1: place Cache ──────────────────────────────────────────────
+    // ── Step 1: remove Origin → Database backdoor ────────────────────────
 
-    describe('step 1:place Cache', () => {
-        it('completes and advances to index 1 when Cache is placed', () => {
-            placeCache();
+    describe('step 1:remove Origin → Database backdoor', () => {
+        it('completes and advances to index 1 when the backdoor is removed', () => {
+            removeOriginToDB();
             expect(tutorial.step1()).toBe(true);
             expect(tutorial.currentStepIndex()).toBe(1);
         });
 
-        it('stops at index 1:does not auto-advance without a connection', () => {
-            placeCache();
+        it('does not complete if the backdoor is still connected', () => {
             expect(tutorial.step2()).toBe(false);
         });
     });
 
-    // ── Step 2: connect REST → Cache ─────────────────────────────────────
+    // ── Step 2: place Cache ──────────────────────────────────────────────
 
-    describe('step 2:connect REST → Cache', () => {
-        beforeEach(() => placeCache());
+    describe('step 2:place Cache', () => {
+        beforeEach(() => removeOriginToDB());
 
-        it('completes and advances to index 2 when REST output connects to Cache input', () => {
-            connectRestToCache();
+        it('completes and advances to index 2 when Cache is placed', () => {
+            placeCache();
             expect(tutorial.step2()).toBe(true);
             expect(tutorial.currentStepIndex()).toBe(2);
         });
 
-        it('stops at index 2:does not auto-advance without Cache→DB', () => {
-            connectRestToCache();
+        it('stops at index 2:does not auto-advance without a connection', () => {
+            placeCache();
             expect(tutorial.step3()).toBe(false);
         });
 
@@ -109,54 +109,57 @@ describe('TutorialService:step detection', () => {
         });
     });
 
-    // ── Step 3: connect Cache → Database ────────────────────────────────
+    // ── Step 3: connect REST → Cache ────────────────────────────────────
 
-    describe('step 3:connect Cache → Database', () => {
+    describe('step 3:connect REST → Cache', () => {
         beforeEach(() => {
+            removeOriginToDB();
             placeCache();
-            connectRestToCache();
         });
 
-        it('completes and advances to index 3 when Cache output connects to Database', () => {
-            connectCacheToDB();
+        it('completes and advances to index 3 when REST output connects to Cache input', () => {
+            connectRestToCache();
             expect(tutorial.step3()).toBe(true);
             expect(tutorial.currentStepIndex()).toBe(3);
         });
 
-        it('stops at index 3:bypass still exists, step 4 not yet done', () => {
-            connectCacheToDB();
+        it('stops at index 3 without Cache→Database', () => {
+            connectRestToCache();
             expect(tutorial.step4()).toBe(false);
         });
     });
 
-    // ── Step 4: remove REST → Database bypass ────────────────────────────
+    // ── Step 4: connect Cache → Database ────────────────────────────────
 
-    describe('step 4:remove REST → Database bypass', () => {
+    describe('step 4:connect Cache → Database', () => {
         beforeEach(() => {
+            removeOriginToDB();
             placeCache();
             connectRestToCache();
-            connectCacheToDB();
         });
 
-        it('completes and advances to index 4 when REST→DB is deleted', () => {
-            removeRestToDB();
+        it('completes and advances to index 4 when Cache connects to Database', () => {
+            connectCacheToDB();
             expect(tutorial.step4()).toBe(true);
             expect(tutorial.currentStepIndex()).toBe(4);
         });
 
-        it('reverts to index 3 if REST→DB is re-added after removal', () => {
-            removeRestToDB();
-            expect(tutorial.step4()).toBe(true);
-
-            gameState.addConnection({ serviceId: rest().id, portIndex: 1 }, { serviceId: db().id, portIndex: 0 });
+        it('reverts to index 3 if Cache→Database is removed', () => {
+            connectCacheToDB();
+            const connection = gameState
+                .connections()
+                .find((c) => c.source.serviceId === cache().id && c.target.serviceId === db().id);
+            if (!connection) throw new Error('Cache→DB connection not found');
+            gameState.removeConnection(connection.id);
             expect(tutorial.step4()).toBe(false);
             expect(tutorial.currentStepIndex()).toBe(3);
         });
 
-        it('does not complete step 4 if prior steps are skipped', () => {
-            // Fresh board: only pre-placed services, remove REST→DB immediately
+        it('does not complete step 4 if earlier steps are skipped', () => {
+            // A Cache→Database connection alone does not satisfy the earlier steps.
             tutorial.init();
-            removeRestToDB();
+            placeCache();
+            connectCacheToDB();
             expect(tutorial.step4()).toBe(false);
         });
     });
@@ -165,10 +168,10 @@ describe('TutorialService:step detection', () => {
 
     describe('step 5:set GET-only route rule on REST → Cache', () => {
         beforeEach(() => {
+            removeOriginToDB();
             placeCache();
             connectRestToCache();
             connectCacheToDB();
-            removeRestToDB();
         });
 
         it('completes and marks isComplete when REST→Cache filter is GET only', () => {
@@ -208,10 +211,9 @@ describe('TutorialService:step detection', () => {
         it('does not complete if step 4 is not done (guard)', () => {
             // Re-init to get a fresh board without step 4 complete
             tutorial.init();
+            removeOriginToDB();
             placeCache();
             connectRestToCache();
-            connectCacheToDB();
-            // REST→DB still exists:step 4 not done
             setGetOnlyOnRestToCache();
             expect(tutorial.step5()).toBe(false);
         });
@@ -223,16 +225,16 @@ describe('TutorialService:step detection', () => {
         it('advances step index 0 → 5 through all actions in sequence', () => {
             expect(tutorial.currentStepIndex()).toBe(0);
 
-            placeCache();
+            removeOriginToDB();
             expect(tutorial.currentStepIndex()).toBe(1);
 
-            connectRestToCache();
+            placeCache();
             expect(tutorial.currentStepIndex()).toBe(2);
 
-            connectCacheToDB();
+            connectRestToCache();
             expect(tutorial.currentStepIndex()).toBe(3);
 
-            removeRestToDB();
+            connectCacheToDB();
             expect(tutorial.currentStepIndex()).toBe(4);
 
             setGetOnlyOnRestToCache();

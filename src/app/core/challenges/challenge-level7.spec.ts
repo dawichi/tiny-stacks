@@ -35,6 +35,18 @@ describe('Level 7: Two Paths:star evaluation', () => {
         TestBed.resetTestingModule();
     });
 
+    const removeDirectRestToDbBypasses = () => {
+        const rests = gameState.services().filter((service) => service.type === ServiceType.REST_SERVICE);
+        const db = mustFind(gameState.services(), (service) => service.type === ServiceType.DATABASE, 'database');
+        for (const rest of rests) {
+            const connection = gameState
+                .connections()
+                .find((item) => item.source.serviceId === rest.id && item.target.serviceId === db.id);
+            if (!connection) throw new Error('REST→Database bypass not found');
+            gameState.removeConnection(connection.id);
+        }
+    };
+
     it('earns 0 stars initially (pre-drawn Origin→REST₁ and Origin→REST₂, no downstream paths)', () => {
         runTicks(tickEngine, 1000);
         expect(challengeService.starStatus()).toEqual([false, false, false]);
@@ -43,6 +55,7 @@ describe('Level 7: Two Paths:star evaluation', () => {
     it('earns 1 star when both downstream paths are built with no route rules', () => {
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
+        removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 10, 9);
 
@@ -62,6 +75,7 @@ describe('Level 7: Two Paths:star evaluation', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
+        removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 10, 9);
 
@@ -92,6 +106,7 @@ describe('Level 7: Two Paths:star evaluation', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
+        removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 10, 9);
 

@@ -44,7 +44,7 @@ This is the canonical project-specific instruction file for AI agents working in
 | Production build | `bun run build` |
 | Unit tests | `bun run test` |
 
-GitHub Actions currently runs the locked install, `bun run check`, and `bun run build`. It does not run `bun run test`; see `TINY-001` in the work queue. The CI pipeline and deploy facts are documented in [operations](operations/deployment.md).
+GitHub Actions runs the locked install, `bun run check`, `bun run test`, and `bun run build`. The CI pipeline and deploy facts are documented in [operations](operations/deployment.md).
 
 ## Safe change boundaries
 

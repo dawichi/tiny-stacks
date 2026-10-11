@@ -96,9 +96,25 @@ describe('Level 6: Scale + Cache:star evaluation', () => {
         );
         gameState.updateConnectionFilter(cacheConn0.id, { methods: [RequestMethod.GET], weight: 100 });
 
-        mustConnect(gameState, { serviceId: rests[1].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        const cacheConn1 = mustConnect(
+            gameState,
+            { serviceId: rests[1].id, portIndex: 1 },
+            { serviceId: cache.id, portIndex: 0 },
+        );
+        gameState.updateConnectionFilter(cacheConn1.id, { methods: [RequestMethod.GET], weight: 100 });
 
         gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
+
+        for (const rest of rests) {
+            const directDbConnection = gameState
+                .connections()
+                .find((connection) => connection.source.serviceId === rest.id && connection.target.serviceId === db.id);
+            if (!directDbConnection) throw new Error('REST→Database connection not found');
+            gameState.updateConnectionFilter(directDbConnection.id, {
+                methods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
+                weight: 100,
+            });
+        }
 
         runTicks(tickEngine, 1000);
         expect(challengeService.starStatus()).toEqual([true, true, true]);

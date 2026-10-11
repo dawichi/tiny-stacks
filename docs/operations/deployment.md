@@ -19,9 +19,9 @@ The development server uses `http://localhost:4200`.
 
 ## Continuous integration
 
-GitHub Actions runs on pushes, pull requests, and manual dispatch. It uses Ubuntu, Bun `1.3.4`, and `bun install --frozen-lockfile`, then runs `bun run check` and `bun run build`.
+GitHub Actions runs on pushes, pull requests, and manual dispatch. It uses Ubuntu, Bun `1.3.4`, and `bun install --frozen-lockfile`, then runs `bun run check`, `bun run test`, and `bun run build`.
 
-The repository contains Vitest tests and the `bun run test` script. The current GitHub Actions workflow does not run that script. This is tracked as `TINY-001` in the [work queue](../work/TODO.md). The build remains an automated validation gate.
+The test command runs the repository's Vitest suite. Run `bun run test` locally to execute the same test step used in CI.
 
 ## Production deployment
 
