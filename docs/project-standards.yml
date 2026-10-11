@@ -1,0 +1,131 @@
+contract_version: 0.2.0
+standards_version: 0.4.0
+
+standards_source:
+  repository: https://github.com/kois-studio/engineering-standards.git
+  revision: f86132fea80126008895b65f76342aaa095e98be
+
+project:
+  name: tiny-stacks
+  lifecycle: existing
+  maturity: deployed browser game in maintenance
+
+standards:
+  - documentation
+  - testing
+  - typescript
+  - security
+  - dependencies
+  - ci-cd
+  - operations
+  - data
+  - styling
+  - web
+
+profiles:
+  - angular-application
+
+compliance:
+  audit_status: partial
+  audit_scope: >-
+    All DOC rules and the directly verified test, CI, data-ownership,
+    security-context, Angular-boundary, and deployment rules are recorded below.
+    Other selected rules have not had a rule-by-rule assessment in this
+    documentation-focused session; see TINY-002.
+  rules:
+    - id: DOC-001
+      status: compliant
+      evidence: docs/AGENTS.md
+    - id: DOC-002
+      status: compliant
+      evidence: docs/README.md
+    - id: DOC-003
+      status: compliant
+      evidence: docs/AGENTS.md, docs/README.md, and topic ownership links
+    - id: DOC-004
+      status: compliant
+      evidence: Local links in maintained Markdown resolve within the repository.
+    - id: DOC-005
+      status: compliant
+      evidence: docs/architecture/, docs/gameplay/, docs/design/, and docs/operations/ reflect inspected source and configuration.
+    - id: DOC-006
+      status: compliant
+      evidence: docs/work/TODO.md; obsolete roadmap bullets were removed from the UI map.
+    - id: DOC-007
+      status: compliant
+      evidence: Project-specific facts remain in this repository.
+    - id: DOC-008
+      status: compliant
+      evidence: No exceptions are claimed; known gaps are recorded in docs/work/TODO.md.
+    - id: DOC-009
+      status: compliant
+      evidence: README.md covers purpose, setup, commands, repository structure, and detailed docs.
+    - id: DOC-010
+      status: compliant
+      evidence: README.md is player-facing; docs/AGENTS.md and docs/README.md own detailed agent and developer guidance.
+    - id: DOC-011
+      status: compliant
+      evidence: docs/work/TODO.md is the repository-local unfinished-work queue.
+    - id: TEST-006
+      status: gap
+      evidence: >-
+        package.json and README.md document bun run test, but
+        .github/workflows/ci.yml does not run it.
+      priority: medium
+      next_action: Track and implement TINY-001.
+    - id: TEST-008
+      status: compliant
+      evidence: >-
+        GitHub Actions runs bun run build as an automated validation suite.
+        This does not replace the existing unit-test command.
+    - id: CI-001
+      status: compliant
+      evidence: .github/workflows/ci.yml runs on pushes, pull requests, and manual dispatch.
+    - id: CI-002
+      status: gap
+      evidence: >-
+        CI installs dependencies, runs Biome checks, and builds. It omits the
+        existing unit-test command and no dependency/security scan is configured
+        in the repository workflow.
+      priority: medium
+      next_action: Track test execution in TINY-001; assess dependency scanning in TINY-002.
+    - id: CI-003
+      status: compliant
+      evidence: >-
+        package.json pins bun@1.3.4; CI uses Bun 1.3.4 and
+        bun install --frozen-lockfile with the committed bun.lock.
+    - id: CI-005
+      status: compliant
+      evidence: ".github/workflows/ci.yml grants contents: read and has no deployment credentials."
+    - id: SEC-001
+      status: compliant
+      evidence: docs/architecture/overview.md documents browser, local-storage, GitHub, and Vercel boundaries.
+    - id: DATA-001
+      status: compliant
+      evidence: >-
+        docs/architecture/overview.md identifies browser storage ownership,
+        storage keys, schema validation, and lifecycle.
+    - id: OPS-002
+      status: compliant
+      evidence: docs/operations/deployment.md distinguishes local development, GitHub CI, and Vercel production.
+    - id: OPS-009
+      status: compliant
+      evidence: docs/operations/deployment.md documents Vercel inspection and rollback steps; app data is browser-owned.
+    - id: ANGULAR-001
+      status: compliant
+      evidence: src/app/core/ and src/app/features/ separate shared rules from game screens.
+    - id: ANGULAR-007
+      status: compliant
+      evidence: docs/architecture/overview.md documents shared board, mode, and persistence ownership.
+    - id: ANGULAR-008
+      status: compliant
+      evidence: src/app/core/game/simulation.ts contains framework-independent simulation logic.
+    - id: ANGULAR-012
+      status: compliant
+      evidence: tsconfig.json enables strict Angular template, injection, and input-access checks.
+    - id: ANGULAR-015
+      status: compliant
+      evidence: docs/architecture/overview.md records scope, owner, persistence, and reset behavior for client state.
+
+exceptions: []
+deferred_work: []

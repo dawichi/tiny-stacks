@@ -12,7 +12,7 @@ const { GET, POST, PUT, DELETE } = RequestMethod;
  *
  * Each level: the build phase runs `requestsPerSecond`; Deploy runs the traffic `phases`
  * (and `outages`), then every star needs its topology AND its thresholds.
- * Per-level design notes and calibration numbers live in `docs/challenges.md`.
+ * Per-level design notes and calibration numbers live in `docs/gameplay/challenges.md`.
  *
  * Port indices reference (from service-types.config.ts):
  *   Origin:         [0] east OUTPUT

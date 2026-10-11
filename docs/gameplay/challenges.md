@@ -1,12 +1,8 @@
-# Challenge goals and calibration
+# Challenge Goals and Calibration
 
-Challenge definitions are the source of truth for starting boards, traffic, outages, resources, topology rules, and
-deploy thresholds. A star requires both its topology and every metric threshold for that tier. Runs use a fixed seed per
-level so a retry repeats the traffic and routing choices.
+Challenge definitions are the source of truth for starting boards, traffic, outages, resources, topology conditions, and deploy thresholds. A star requires both its topology and every metric threshold for that tier. Runs use a fixed seed per level so a retry repeats the traffic and routing choices.
 
-The table records the intended baseline pressure, the progression between tiers, and the encoded pass thresholds. The
-thresholds are design targets, not measured benchmark results. Recheck the reference fixtures in
-`src/app/core/challenges/challenge-fixtures.ts` whenever simulation behavior or traffic changes.
+The table records intended baseline pressure, progression between tiers, and encoded pass thresholds. Thresholds are design targets, not measured benchmark results. Recheck `src/app/core/challenges/challenge-definitions.ts`, `challenge-evaluation.ts`, and the reference fixtures whenever challenge behavior or traffic changes.
 
 | Level | Baseline pressure | Star progression | Deploy thresholds |
 |-------|------------------|------------------|------------------|
@@ -19,21 +15,15 @@ thresholds are design targets, not measured benchmark results. Recheck the refer
 | 7 · Two Paths | Both REST services send reads and writes directly to the same Database at a 36 req/s peak. | Build shared Cache and Queue paths → split reads and writes at Origin → add downstream route rules to keep Cache on reads and Queue on writes. | ★1 errors < 20%; ★2 errors < 1%, P95 < 1500 ms; ★3 errors < 1%, P95 < 800 ms. |
 | 8 · Full Stack | The board starts with only Origin and Database and no connections; the launch peak is 55 req/s. | Create a minimal Gateway-to-REST path → assemble the full stack → route reads to Cache and writes to Queue. | ★1 throughput ≥ 15 req/s; ★2 errors < 20%; ★3 errors < 1%, P95 < 1000 ms. |
 
-## Simulation rules that affect challenge outcomes
+## Scoring and editing
 
-- Database writes invalidate entries in every Cache upstream of that Database. Cache entries also expire after the configured
-  TTL, so an unused or stale entry cannot live forever.
-- A Message Queue acknowledges write methods to its producer and delivers them asynchronously. A GET sent to a Queue fails
-  because a queue cannot return a data response.
-- A Load Balancer chooses the least busy healthy target. Other services select among the outgoing connections that accept
-  the request method, using their configured weights.
-- Deploy P95 latency and error rate are calculated from the scripted run, separately from the rolling live Sandbox metrics.
-- Infrastructure and Database-operation costs are included in Deploy results and shown beside the thresholds.
+- Scoring checks the highest star tier first; earning a higher tier also grants the lower stars.
+- The first challenge is open immediately. Each later level unlocks after earning at least one star on the previous level.
+- Pre-placed services are locked. Connections can be edited.
+- During Deploy the board is read-only. Results offer a retry or a return to building.
 
 ## Level 7 topology note
 
-The level begins with both REST-to-Database bypasses visible. Each reference solution removes those bypasses, connects both
-REST services to the shared Cache, and connects the shared backend to the Message Queue. Without Origin rules, GET traffic
-can reach the Queue and fail. Splitting methods at Origin fixes that failure. The final tier also filters the shared
-backend's Cache and Queue links; routing writes through the Queue reduces client latency by returning the acknowledgement
-before the asynchronous Database delivery finishes.
+The level begins with both REST-to-Database bypasses visible. The reference solutions remove those bypasses, connect both REST services to the shared Cache, and connect the shared backend to the Message Queue. Without Origin rules, GET traffic can reach the Queue and fail. Splitting methods at Origin fixes that failure. The final tier also filters the shared backend's Cache and Queue links; routing writes through the Queue returns an acknowledgement before asynchronous Database delivery finishes.
+
+Shared routing, queue, cache, and metric behavior is described in the [Simulation Model](../architecture/simulation.md).

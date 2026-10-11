@@ -73,15 +73,13 @@ The game runs entirely in your browser. It has no backend; boards and progress a
 | **Message Queue** | Acknowledges writes, then delivers them asynchronously. Reads sent to a queue fail because it cannot return data. |
 | **Load Balancer** | Routes requests to the least busy healthy backend. |
 
-## Design decisions
+## Repository structure
 
-- **Angular signals for local state.** The board, selected items, metrics, and challenge progress are naturally scoped to one browser session. Signals keep updates direct without adding a global state framework.
-- **A plain TypeScript simulation.** `Simulation` owns the request lifecycle; Angular's `TickEngineService` advances it in fixed steps and publishes snapshots for the UI. Simulated time drives traffic, outages, cache expiry, and metric windows, so results do not depend on wall-clock timing.
-- **Seeded challenge runs.** Each challenge uses a stable random seed, so routing and request mixes repeat when a player retries a deployment.
-- **Declarative challenges.** Levels describe their starting board, traffic, resource limits, topology requirements, and metric thresholds as data. A player earns a star only when both the topology and the deployment results meet that tier's requirements.
-- **Mode-owned persistence.** Sandbox saves a versioned, validated board and per-Origin rates. Tutorial and Challenges load their own boards without overwriting the Sandbox.
+- `src/app/core/` contains board rules, simulation, storage, tutorial, and challenge logic.
+- `src/app/features/` contains the routed screens and game UI.
+- `docs/` contains architecture, gameplay, design, operating, and agent handoff documentation.
 
-More detail on level goals and calibration is in [`docs/challenges.md`](docs/challenges.md). Fixed UI positions are mapped in [`docs/ui-zones.md`](docs/ui-zones.md).
+See the [project documentation index](docs/README.md) for the source of truth on architecture, simulation, challenge calibration, UI layout, and deployment.
 
 ## Tech stack
 
@@ -105,8 +103,8 @@ bun run check
 bun run test
 ```
 
-GitHub Actions runs `bun run check` and `bun run build` on pushes and pull requests. This repository contains no
-deployment workflow; the production site is at [tiny-stacks.dawichi.dev](https://tiny-stacks.dawichi.dev).
+The production site is [tiny-stacks.dawichi.dev](https://tiny-stacks.dawichi.dev). See
+[Development and Deployment](docs/operations/deployment.md) for CI, deployment, and recovery details.
 
 ## License
 
