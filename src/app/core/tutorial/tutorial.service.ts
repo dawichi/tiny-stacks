@@ -1,5 +1,5 @@
 import { computed, Injectable, inject, signal } from '@angular/core';
-import { GameStateService } from '../game/game-state.service';
+import { type Board, createConnectionId, createServiceId, GameStateService } from '../game/game-state.service';
 import { ServiceType } from '../game/service-types.config';
 import { RequestMethod } from '../game/sim-types';
 import { StorageKeys, StorageService } from '../storage/storage.service';
@@ -15,6 +15,7 @@ export class TutorialService {
     readonly isTutorialComplete = signal(this.storage.getItem(StorageKeys.TUTORIAL_COMPLETE) === true);
 
     // IDs of pre-placed services, set during init()
+    private readonly _originId = signal<string | null>(null);
     private readonly _restId = signal<string | null>(null);
     private readonly _dbId = signal<string | null>(null);
 
@@ -25,44 +26,28 @@ export class TutorialService {
 
     // ── Step completion (sequential) ───────────────────────────────────
 
-    /** Step 1: Cache has been placed on the grid */
-    readonly step1 = computed(() => this._cacheId() !== null);
-
-    /** Step 2: REST → Cache connection exists */
-    readonly step2 = computed(() => {
-        if (!this.step1()) return false;
-        const restId = this._restId();
-        const cacheId = this._cacheId();
-        if (!restId || !cacheId) return false;
-        return this.gameState
-            .connections()
-            .some((c) => c.source.serviceId === restId && c.target.serviceId === cacheId);
-    });
-
-    /** Step 3: Cache → DB connection exists */
-    readonly step3 = computed(() => {
-        if (!this.step2()) return false;
-        const cacheId = this._cacheId();
+    /** Step 1: the Origin → Database backdoor is gone */
+    readonly step1 = computed(() => {
+        const originId = this._originId();
         const dbId = this._dbId();
-        if (!cacheId || !dbId) return false;
-        return this.gameState.connections().some((c) => c.source.serviceId === cacheId && c.target.serviceId === dbId);
+        if (!originId || !dbId) return false;
+        return !this.hasConnection(originId, dbId);
     });
 
-    /** Step 4: No direct REST → DB connection remains */
-    readonly step4 = computed(() => {
-        if (!this.step3()) return false;
-        const restId = this._restId();
-        const dbId = this._dbId();
-        if (!restId || !dbId) return false;
-        return !this.gameState.connections().some((c) => c.source.serviceId === restId && c.target.serviceId === dbId);
-    });
+    /** Step 2: Cache has been placed on the grid */
+    readonly step2 = computed(() => this.step1() && this._cacheId() !== null);
 
-    /** Step 5: REST → Cache connection has GET-only route rule */
+    /** Step 3: REST → Cache connection exists */
+    readonly step3 = computed(() => this.step2() && this.hasConnection(this._restId(), this._cacheId()));
+
+    /** Step 4: Cache → Database connection exists */
+    readonly step4 = computed(() => this.step3() && this.hasConnection(this._cacheId(), this._dbId()));
+
+    /** Step 5: REST → Cache connection has a GET-only route rule */
     readonly step5 = computed(() => {
         if (!this.step4()) return false;
         const restId = this._restId();
         const cacheId = this._cacheId();
-        if (!restId || !cacheId) return false;
         const conn = this.gameState
             .connections()
             .find((c) => c.source.serviceId === restId && c.target.serviceId === cacheId);
@@ -70,14 +55,11 @@ export class TutorialService {
         return methods.length === 1 && methods[0] === RequestMethod.GET;
     });
 
-    /** 0-indexed step the player is currently on (0–4). 5 = all complete. */
+    /** 0-indexed step the player is currently on (0-4). 5 = all complete. */
     readonly currentStepIndex = computed(() => {
-        if (this.step5()) return 5;
-        if (this.step4()) return 4;
-        if (this.step3()) return 3;
-        if (this.step2()) return 2;
-        if (this.step1()) return 1;
-        return 0;
+        const done = [this.step1(), this.step2(), this.step3(), this.step4(), this.step5()];
+        const next = done.indexOf(false);
+        return next < 0 ? done.length : next;
     });
 
     readonly isComplete = computed(() => this.step5());
@@ -87,24 +69,24 @@ export class TutorialService {
 
     // ── Board setup ────────────────────────────────────────────────────
 
+    /** Load the tutorial board: Origin, REST and Database are locked; cables stay editable */
     init(): void {
-        this.gameState.clearAll();
-        this._restId.set(null);
-        this._dbId.set(null);
-
-        const origin = this.gameState.addService(ServiceType.ORIGIN, 1, 6);
-        const rest = this.gameState.addService(ServiceType.REST_SERVICE, 5, 5);
-        const db = this.gameState.addService(ServiceType.DATABASE, 14, 4);
-
-        if (!origin || !rest || !db) return;
-
+        const origin = { id: createServiceId(), type: ServiceType.ORIGIN, gridX: 1, gridY: 6 };
+        const rest = { id: createServiceId(), type: ServiceType.REST_SERVICE, gridX: 5, gridY: 5 };
+        const db = { id: createServiceId(), type: ServiceType.DATABASE, gridX: 14, gridY: 4 };
+        const board: Board = {
+            services: [origin, rest, db],
+            connections: [
+                this.cable(origin.id, 0, rest.id, 0),
+                this.cable(rest.id, 1, db.id, 0),
+                // The backdoor the player removes in step 1
+                this.cable(origin.id, 0, db.id, 0),
+            ],
+        };
+        this.gameState.loadBoard(board, [origin.id, rest.id, db.id]);
+        this._originId.set(origin.id);
         this._restId.set(rest.id);
         this._dbId.set(db.id);
-
-        // Origin → REST (permanent, player should not remove)
-        this.gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: rest.id, portIndex: 0 });
-        // REST → DB (player will remove this in step 4)
-        this.gameState.addConnection({ serviceId: rest.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
     }
 
     complete(): void {
@@ -113,8 +95,24 @@ export class TutorialService {
     }
 
     cleanup(): void {
-        this.gameState.clearAll();
+        this.gameState.reset();
+        this._originId.set(null);
         this._restId.set(null);
         this._dbId.set(null);
+    }
+
+    private cable(sourceId: string, sourcePort: number, targetId: string, targetPort: number) {
+        return {
+            id: createConnectionId(),
+            source: { serviceId: sourceId, portIndex: sourcePort },
+            target: { serviceId: targetId, portIndex: targetPort },
+        };
+    }
+
+    private hasConnection(sourceId: string | null, targetId: string | null): boolean {
+        if (!sourceId || !targetId) return false;
+        return this.gameState
+            .connections()
+            .some((c) => c.source.serviceId === sourceId && c.target.serviceId === targetId);
     }
 }

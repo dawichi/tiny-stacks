@@ -75,6 +75,7 @@ export class TutorialPageComponent implements OnInit, OnDestroy {
     }
 
     ngOnDestroy(): void {
+        this.simulation.stop();
         this.tutorial.cleanup();
     }
 

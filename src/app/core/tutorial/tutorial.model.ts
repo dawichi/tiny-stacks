@@ -7,37 +7,37 @@ export interface TutorialStep {
 
 export const TUTORIAL_STEPS: TutorialStep[] = [
     {
+        title: 'Remove the backdoor',
+        description:
+            'Someone wired Origin straight to the Database for debugging and never removed it. Click that cable and press Delete.',
+        hint: 'Click the cable that goes from Origin directly to the Database, then press Delete (or use the trash button in the panel).',
+        realWorldNote: 'Clients should never reach the database directly: every request goes through your services.',
+    },
+    {
         title: 'Place the Cache',
         description: 'Drag the Cache service from the palette (bottom-left) and drop it on the grid.',
         hint: 'Mint-green tile with a lightning bolt icon.',
         realWorldNote:
-            'Redis is the most widely used cache. GitHub and Stack Overflow serve billions of reads per day with it.',
+            'Redis and Memcached are common caches: in-memory stores that answer in well under a millisecond.',
     },
     {
-        title: 'Connect REST → Cache',
+        title: 'Connect REST to Cache',
         description: 'Drag from the blue output port on the REST service to the green input port on the Cache.',
         hint: 'Blue port = output (right side of REST). Green port = input (left side of Cache).',
-        realWorldNote: 'This creates a read-through cache path. Reads check the cache before reaching the database.',
     },
     {
-        title: 'Connect Cache → Database',
-        description: 'Drag from the blue output port on the Cache to the orange port on the Database.',
-        hint: 'The Database has an orange bidirectional port that handles both requests and responses.',
-    },
-    {
-        title: 'Remove the bypass',
+        title: 'Connect Cache to Database',
         description:
-            'Click the direct REST → Database cable, then press Delete (or use the trash button in the panel). All traffic must flow through the Cache.',
-        hint: 'Click the cable between REST and Database to select it, then press the Delete key.',
-        realWorldNote:
-            'A direct bypass defeats the cache. Removing it forces all reads through the cache, cutting DB load by 80–90%.',
+            'Drag from the blue output port on the Cache to the orange port on the Database. On a miss, the Cache fetches from here.',
+        hint: 'The Database has an orange bidirectional port that handles both requests and responses.',
+        realWorldNote: 'This is the cache-aside pattern: check the cache first, fall back to the database on a miss.',
     },
     {
         title: 'Set a route rule',
         description:
-            'Click the REST → Cache cable. In the panel that opens, disable POST, PUT, and DELETE. Writes should not be cached.',
+            'Click the REST to Cache cable. In the panel that opens, keep only GET enabled. Writes then always take the direct path to the Database.',
         hint: 'Click the cable to select it, then toggle methods in the Route Rule panel on the right.',
         realWorldNote:
-            'Route rules are how API gateways work in production. Nginx, Kong, and Envoy all route by HTTP method.',
+            'API gateways and service meshes (nginx, Envoy, Kong) route requests by HTTP method the same way.',
     },
 ];

@@ -1,9 +1,18 @@
 import { ServiceType } from '../game/service-types.config';
 import { RequestMethod } from '../game/sim-types';
 import type { ChallengeDefinition } from './challenge.model';
+import { filtered, metric, noPath, path, paths, phase, READS, WRITES } from './challenge-conditions';
+
+const { ORIGIN, API_GATEWAY: GW, REST_SERVICE: REST, DATABASE: DB, CACHE, MESSAGE_QUEUE: MQ } = ServiceType;
+const LB = ServiceType.LOAD_BALANCER;
+const { GET, POST, PUT, DELETE } = RequestMethod;
 
 /**
  * All challenge definitions. Pure data, no logic.
+ *
+ * Each level: the build phase runs `requestsPerSecond`; Deploy runs the traffic `phases`
+ * (and `outages`), then every star needs its topology AND its thresholds.
+ * Per-level design notes and calibration numbers live in `docs/challenges.md`.
  *
  * Port indices reference (from service-types.config.ts):
  *   Origin:         [0] east OUTPUT
@@ -21,100 +30,51 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Cache Layer',
         description: 'Monday morning peak. The database is drowning in repeated reads.',
         briefing:
-            "It's 9am on a Monday and the analytics dashboard is lighting up. " +
-            'Your REST Service is hammering the Database with the same catalog queries, over and over. ' +
-            'Every GET for /users and /products goes all the way to disk. ' +
-            'A Cache would serve the repeat reads instantly and take the pressure off. ' +
-            'Add one and route reads through it, then commit: remove the direct REST → Database shortcut once the cache path is live.',
+            "It's 9am on a Monday and the dashboards are lighting up. " +
+            'Your REST Service sends every request straight to the Database, and most of them are the same few reads. ' +
+            'At peak the Database can only handle about 20 requests per second, so requests start failing. ' +
+            'Put a Cache in front of it so repeat reads never reach the Database. ' +
+            'Writes still have to land in the Database: decide how they get there.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
-            { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 4, gridY: 5 },
+            { type: DB, gridX: 14, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0), pre-drawn; player must reroute through Cache and remove this
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 25,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'users', weight: 50 },
-                        { method: RequestMethod.GET, resource: 'products', weight: 25 },
-                        { method: RequestMethod.POST, resource: 'users', weight: 15 },
-                        { method: RequestMethod.PUT, resource: 'products', weight: 10 },
+                        { method: GET, resource: 'users', weight: 45 },
+                        { method: GET, resource: 'products', weight: 30 },
+                        { method: POST, resource: 'orders', weight: 15 },
+                        { method: PUT, resource: 'users', weight: 10 },
                     ],
+                    phases: [phase('Warm-up', 8, 15), phase('Morning peak', 12, 32), phase('Cool-down', 5, 15)],
                 },
             },
         ],
-        availableResources: [{ type: ServiceType.CACHE, count: 1 }],
+        availableResources: [{ type: CACHE, count: 1 }],
         stars: [
             {
-                // ★1: cache added in parallel, cache path exists AND direct bypass still present
                 label: 'Cache in the pipeline',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(REST, CACHE, DB), path(REST, DB)],
+                thresholds: [metric('errorRate', '<', 5)],
             },
             {
-                // ★2: committed to cache, bypass removed, all traffic through cache (even writes)
                 label: 'No direct DB access',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(REST, CACHE, DB), noPath(REST, DB)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 900)],
             },
             {
-                // ★3: optimal, reads cached (GET filter), writes skip cache entirely (write filter on REST→DB)
-                // Mutually exclusive with ★2: REST→DB reintroduced with a write-only filter
                 label: 'Smart read/write routing',
-                conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(REST, CACHE, DB), filtered(REST, CACHE, READS), filtered(REST, DB, WRITES)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 800)],
             },
         ],
     },
@@ -123,114 +83,60 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-2',
         name: 'Two Backends',
-        description: 'Black Friday is 48 hours away. One backend will not survive the spike.',
+        description: 'Both backends will crash during the deploy. Keep the site up anyway.',
         briefing:
-            'The sale starts at midnight in two days. Traffic projections say 3× normal load. ' +
-            "One REST Service won't handle it, but you have a second one sitting idle, already wired to the Database. " +
-            'You have a Load Balancer in your arsenal. ' +
-            'You could wire Origin straight to both backends for a quick split, ' +
-            'or go clean: put the Load Balancer in front of both and cut the direct connection. ' +
-            'When the spike hits, the cleanest topology holds.',
+            'Ops warned you: the hosts behind your REST Services are unstable today. ' +
+            'During the deploy, REST 1 will go down for a few seconds, and later REST 2 will too. ' +
+            'Right now every request goes to REST 1, so when it crashes, everything fails. ' +
+            'Wiring Origin to both backends spreads the traffic, but a random split still sends half the requests to whichever one is down. ' +
+            'A Load Balancer checks health and only sends traffic to backends that are up.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 3, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 9, locked: true },
-            { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 9, gridY: 3 },
+            { type: REST, gridX: 9, gridY: 9 },
+            { type: DB, gridX: 14, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST₁(in:0), the direct connection player must reroute
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST₁(out:1) → Database(bidir:0), pre-wired
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
-            // REST₂(out:1) → Database(bidir:0), pre-wired, receives no traffic yet
             { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 25,
+                    requestsPerSecond: 12,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'users', weight: 40 },
-                        { method: RequestMethod.GET, resource: 'products', weight: 20 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 20 },
-                        { method: RequestMethod.PUT, resource: 'users', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 10 },
+                        { method: GET, resource: 'users', weight: 40 },
+                        { method: GET, resource: 'products', weight: 20 },
+                        { method: POST, resource: 'orders', weight: 20 },
+                        { method: PUT, resource: 'users', weight: 10 },
+                        { method: DELETE, resource: 'orders', weight: 10 },
                     ],
+                    phases: [phase('Steady traffic', 28, 12)],
                 },
             },
         ],
-        availableResources: [{ type: ServiceType.LOAD_BALANCER, count: 1 }],
+        outages: [
+            { serviceIndex: 1, atMs: 5000, durationMs: 8000 },
+            { serviceIndex: 2, atMs: 18000, durationMs: 3000 },
+        ],
+        availableResources: [{ type: LB, count: 1 }],
         stars: [
             {
-                // ★1: both backends wired directly from Origin, no LB in the path
                 label: 'Wire up the idle backend',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.LOAD_BALANCER],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [paths(2, ORIGIN, REST, DB), noPath(ORIGIN, LB)],
+                thresholds: [metric('errorRate', '<', 26)],
             },
             {
-                // ★2: LB added and connected, but direct Origin→REST bypass still present
                 label: 'LB added but hedged',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(ORIGIN, LB, REST, DB), path(ORIGIN, REST)],
+                thresholds: [metric('errorRate', '<', 18)],
             },
             {
-                // ★3: LB as sole entry, both REST instances connected, bypass removed
-                label: 'Clean LB',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Health-checked entry point',
+                conditions: [paths(2, ORIGIN, LB, REST, DB), noPath(ORIGIN, REST)],
+                thresholds: [metric('errorRate', '<', 3)],
             },
         ],
     },
@@ -239,110 +145,56 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-3',
         name: 'Smart Routes',
-        description: 'Reads and writes share the same path. The cache is poisoning itself.',
+        description: 'The cache is there, but half the reads walk right past it.',
         briefing:
-            'Your team wired up the Cache last sprint but never set any route rules. ' +
-            'Now every request — reads and writes — flows through it, ' +
-            'and every POST or PUT invalidates what the GETs just cached. ' +
-            'You can rip the cache out of the pipeline entirely, ' +
-            'or fix the routing so only reads go through it. ' +
-            'Either way, something has to change. ' +
-            'Route rules are how real API gateways work — nginx, Envoy, and Kong all use them.',
+            'Your team wired up a Cache last sprint but left the old REST to Database connection in place, with no route rules. ' +
+            'REST picks between the two at random, so half of the reads skip the cache and hit the Database anyway. ' +
+            'At peak that is more than the Database can take. ' +
+            'Fix the routing: no new services, just connections and route rules. ' +
+            'Route rules are how real API gateways and service meshes decide where each request goes.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
-            { type: ServiceType.CACHE, gridX: 10, gridY: 3, locked: true },
-            { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 4, gridY: 5 },
+            { type: CACHE, gridX: 10, gridY: 3 },
+            { type: DB, gridX: 14, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Cache(in:0), pre-drawn, no filter — writes flow through and poison it
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
-            // Cache(out:1) → DB(bidir:0), pre-drawn
             { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
-            // REST(out:1) → DB(bidir:0), pre-drawn, parallel direct path
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 25,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'users', weight: 40 },
-                        { method: RequestMethod.GET, resource: 'products', weight: 20 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 20 },
-                        { method: RequestMethod.PUT, resource: 'users', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 10 },
+                        { method: GET, resource: 'products', weight: 45 },
+                        { method: GET, resource: 'users', weight: 25 },
+                        { method: POST, resource: 'orders', weight: 20 },
+                        { method: DELETE, resource: 'orders', weight: 10 },
                     ],
+                    phases: [phase('Warm-up', 8, 15), phase('Peak', 12, 36), phase('Cool-down', 5, 15)],
                 },
             },
         ],
         availableResources: [],
         stars: [
             {
-                // ★1: cache removed from pipeline entirely — no more poisoning but no caching benefit
-                label: 'Remove the cache',
-                conditions: [
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Everything through the cache',
+                conditions: [path(REST, CACHE, DB), noPath(REST, DB)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 600)],
             },
             {
-                // ★2: GET filter on REST→Cache, writes fall through to REST→DB naturally
-                label: 'Reads routed to cache',
-                conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Writes bypass the cache',
+                conditions: [path(REST, CACHE, DB), filtered(REST, DB, WRITES)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 600)],
             },
             {
-                // ★3: both paths explicitly filtered — nothing relies on default fallthrough
-                label: 'Fully controlled',
-                conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Fully controlled routes',
+                conditions: [path(REST, CACHE, DB), filtered(REST, CACHE, READS), filtered(REST, DB, WRITES)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 600)],
             },
         ],
     },
@@ -351,103 +203,53 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-4',
         name: 'Write Buffer',
-        description: 'Christmas sale just went live. Orders are flooding in 10× faster than usual.',
+        description: 'Holiday sale just went live. Orders are flooding in.',
         briefing:
-            "It's December 25th, 8am, and your on-call phone is already ringing. " +
-            'Orders are pouring in: every POST, PUT, and DELETE hitting the Database synchronously. ' +
-            'The same slow DB that handles all your reads is now drowning in writes too. ' +
-            'Place a Message Queue and route writes through it: the Database processes them at its own pace, ' +
-            'and your REST Service stops waiting on every order confirmation. ' +
-            'The pre-drawn REST → Database path still handles reads. Your job is to buffer the writes.',
+            "It's December 25th, 8am, and the order rush has started. " +
+            'Every POST, PUT and DELETE waits on the Database, and the same slow Database also has to answer every read. ' +
+            'Place a Message Queue for the writes: it confirms each order at once and feeds the Database at a pace it can handle. ' +
+            'Careful with reads: a queue cannot answer a GET, so a read sent through it waits in line behind every order.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 4, gridY: 5, locked: true },
-            { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 4, gridY: 5 },
+            { type: DB, gridX: 14, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0), pre-drawn
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0), pre-drawn; player adds MQ path for writes
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 110,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.POST, resource: 'orders', weight: 35 },
-                        { method: RequestMethod.PUT, resource: 'inventory', weight: 20 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 15 },
-                        { method: RequestMethod.GET, resource: 'products', weight: 20 },
-                        { method: RequestMethod.GET, resource: 'users', weight: 10 },
+                        { method: POST, resource: 'orders', weight: 35 },
+                        { method: PUT, resource: 'inventory', weight: 20 },
+                        { method: DELETE, resource: 'orders', weight: 15 },
+                        { method: GET, resource: 'products', weight: 20 },
+                        { method: GET, resource: 'users', weight: 10 },
                     ],
+                    phases: [phase('Warm-up', 6, 15), phase('Order rush', 12, 32), phase('Cool-down', 8, 12)],
                 },
             },
         ],
-        availableResources: [{ type: ServiceType.MESSAGE_QUEUE, count: 1 }],
+        availableResources: [{ type: MQ, count: 1 }],
         stars: [
             {
-                // ★1: MQ added alongside pre-drawn bypass — both paths active, writes split uncontrolled
                 label: 'Plug in the queue',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(REST, MQ, DB), path(REST, DB)],
+                thresholds: [metric('errorRate', '<', 20)],
             },
             {
-                // ★2: bypass removed, all traffic through MQ — DB buffered but reads queue up too
-                label: 'Queue everything',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Queue accepts writes',
+                conditions: [path(REST, MQ, DB), path(REST, DB), filtered(REST, MQ, WRITES)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 800)],
             },
             {
-                // ★3: writes buffered via MQ (write filter), reads stay fast via direct DB (GET filter)
                 label: 'Smart split',
-                conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.DATABASE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(MQ, DB), filtered(REST, MQ, WRITES), filtered(REST, DB, READS)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 500)],
             },
         ],
     },
@@ -458,108 +260,55 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'The Gateway',
         description: 'Security audit: backends are directly exposed. Single entry point required.',
         briefing:
-            'Your compliance review came back with a red flag: Origin connects straight to the REST Service. ' +
-            'no rate limiting, no auth layer, no single point of control. ' +
-            'Every service is one hop from the outside world. ' +
-            'Place an API Gateway and route all traffic through it, then remove the direct Origin → REST connection. ' +
-            'For full marks, also add a Cache on the read path. The audit flagged uncached repeat reads too.',
+            'Your compliance review came back with a red flag: Origin connects straight to the REST Service, ' +
+            'with no rate limiting, no auth layer and no single point of control. ' +
+            'Place an API Gateway and route all traffic through it, then remove the direct Origin to REST connection. ' +
+            'The audit also flagged slow reads at peak: the Database cannot keep up with the repeat reads. ' +
+            'For full marks, add a Cache on the read path too.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 7, gridY: 5, locked: true },
-            { type: ServiceType.DATABASE, gridX: 14, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 7, gridY: 5 },
+            { type: DB, gridX: 14, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST(in:0), pre-drawn; player must reroute through GW
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // REST(out:1) → Database(bidir:0), pre-drawn
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 2, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 25,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'users', weight: 45 },
-                        { method: RequestMethod.GET, resource: 'products', weight: 25 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 15 },
-                        { method: RequestMethod.PUT, resource: 'users', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 5 },
+                        { method: GET, resource: 'users', weight: 45 },
+                        { method: GET, resource: 'products', weight: 35 },
+                        { method: POST, resource: 'orders', weight: 12 },
+                        { method: PUT, resource: 'users', weight: 5 },
+                        { method: DELETE, resource: 'orders', weight: 3 },
                     ],
+                    phases: [phase('Warm-up', 8, 15), phase('Peak', 10, 28), phase('Cool-down', 6, 15)],
                 },
             },
         ],
         availableResources: [
-            { type: ServiceType.API_GATEWAY, count: 1 },
-            { type: ServiceType.CACHE, count: 1 },
+            { type: GW, count: 1 },
+            { type: CACHE, count: 1 },
         ],
         stars: [
             {
-                // ★1: GW added but bypass still present
                 label: 'Gateway online',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.API_GATEWAY, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(ORIGIN, GW, REST), path(ORIGIN, REST)],
+                thresholds: [metric('errorRate', '<', 20)],
             },
             {
-                // ★2: GW is sole entry point, bypass removed
                 label: 'Single entry point',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.API_GATEWAY, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(ORIGIN, GW, REST), noPath(ORIGIN, REST)],
+                thresholds: [metric('errorRate', '<', 20)],
             },
             {
-                // ★3: GW as sole entry AND cache on the read path
                 label: 'Gateway + cache',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.API_GATEWAY, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(ORIGIN, GW, REST), noPath(ORIGIN, REST), path(REST, CACHE, DB)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 800)],
             },
         ],
     },
@@ -568,108 +317,63 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-6',
         name: 'Scale + Cache',
-        description: 'You just got HackerNews front page. Traffic is 50× normal.',
+        description: 'You just hit the front page. Traffic is about to triple.',
         briefing:
-            'The post went live an hour ago and your on-call is paging. ' +
-            'Two REST Services are pre-wired to the Database for writes, but Origin has no path in yet. ' +
-            'Place a Load Balancer to split traffic across both backends, ' +
-            'and a Cache to absorb the flood of repeated product reads. ' +
-            'For the cleanest architecture, make sure both backends share the Cache and lock it to GET requests only.',
+            'The post went live an hour ago and the traffic graph is going vertical. ' +
+            'Two REST Services are already wired to the Database, but Origin has no way in yet. ' +
+            'One REST Service handles about 40 requests per second; the peak is more than that. ' +
+            'Place a Load Balancer to spread traffic across both backends, ' +
+            'and a Cache to keep the flood of repeated reads away from the Database. ' +
+            'For the cleanest architecture, both backends share the Cache and only send it reads.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 2, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 9, gridY: 9, locked: true },
-            { type: ServiceType.DATABASE, gridX: 16, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 9, gridY: 2 },
+            { type: REST, gridX: 9, gridY: 9 },
+            { type: DB, gridX: 16, gridY: 5 },
         ],
         connections: [
-            // REST₁(out:1) → Database(bidir:0), pre-wired for writes
             { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
-            // REST₂(out:1) → Database(bidir:0), pre-wired for writes
             { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 35,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'products', weight: 50 },
-                        { method: RequestMethod.GET, resource: 'users', weight: 20 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 15 },
-                        { method: RequestMethod.PUT, resource: 'products', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 5 },
+                        { method: GET, resource: 'products', weight: 50 },
+                        { method: GET, resource: 'users', weight: 25 },
+                        { method: POST, resource: 'orders', weight: 15 },
+                        { method: PUT, resource: 'products', weight: 5 },
+                        { method: DELETE, resource: 'orders', weight: 5 },
                     ],
+                    phases: [phase('Warm-up', 8, 15), phase('Front page', 12, 46), phase('Cool-down', 6, 15)],
                 },
             },
         ],
         availableResources: [
-            { type: ServiceType.LOAD_BALANCER, count: 1 },
-            { type: ServiceType.CACHE, count: 1 },
+            { type: LB, count: 1 },
+            { type: CACHE, count: 1 },
         ],
         stars: [
             {
-                // ★1: LB routes to both backends, but no cache — DB still gets the read flood
                 label: 'Just scale',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [paths(2, ORIGIN, LB, REST, DB)],
+                thresholds: [metric('throughput', '>=', 15)],
             },
             {
-                // ★2: both REST instances route through the shared Cache (unfiltered — writes go through too)
-                label: 'Both backends cached',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.CACHE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                ],
+                label: 'Scale + shared cache',
+                conditions: [paths(2, ORIGIN, LB, REST, CACHE, DB)],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 1000)],
             },
             {
-                // ★3: both backends cached AND Cache is GET-only; writes fall through to pre-drawn REST→DB
-                label: 'Cache GET-only',
+                label: 'Cache for reads only',
                 conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.CACHE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
+                    paths(2, ORIGIN, LB, REST, CACHE, DB),
+                    filtered(REST, CACHE, READS),
+                    filtered(REST, DB, WRITES),
                 ],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 900)],
             },
         ],
     },
@@ -678,139 +382,74 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
     {
         id: 'level-7',
         name: 'Two Paths',
-        description: 'Reads are slow. Writes are unreliable. They are fighting over the same resources.',
+        description: 'Reads and writes are fighting over the same backends.',
         briefing:
-            'Your two REST Services are receiving all traffic with no separation, reads and writes mixed together. ' +
-            "GETs are slow because they're queued behind heavy write operations. " +
-            "POSTs are unreliable because they're sharing a path that wasn't designed for them. " +
-            'Build a Cache path on one side for reads, and a Message Queue path on the other for writes. ' +
-            'Then set route rules at Origin so each traffic type knows exactly where to go. ' +
-            'For maximum stars, also filter the downstream connections.',
+            'Both REST Services send traffic straight to the same Database, where reads and writes compete for capacity. ' +
+            'Build a shared read path with a Cache and a write path with a Message Queue. ' +
+            'At first, Origin still splits requests randomly, so some reads can land on the queue side and fail. ' +
+            'Route reads to the backend connected to the Cache and writes to the backend connected to both paths. ' +
+            'For full marks, add downstream rules too: the shared backend should send reads to Cache and writes to the Queue.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 5, gridY: 2, locked: true },
-            { type: ServiceType.REST_SERVICE, gridX: 5, gridY: 10, locked: true },
-            { type: ServiceType.DATABASE, gridX: 16, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: REST, gridX: 5, gridY: 2 },
+            { type: REST, gridX: 5, gridY: 10 },
+            { type: DB, gridX: 16, gridY: 5 },
         ],
         connections: [
-            // Origin(out:0) → REST₁(in:0), pre-drawn, unruled
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 1, targetPortIndex: 0 },
-            // Origin(out:0) → REST₂(in:0), pre-drawn, unruled
             { sourceIndex: 0, sourcePortIndex: 0, targetIndex: 2, targetPortIndex: 0 },
+            { sourceIndex: 1, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
+            { sourceIndex: 2, sourcePortIndex: 1, targetIndex: 3, targetPortIndex: 0 },
         ],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 30,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'products', weight: 40 },
-                        { method: RequestMethod.GET, resource: 'users', weight: 20 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 20 },
-                        { method: RequestMethod.PUT, resource: 'products', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 10 },
+                        { method: GET, resource: 'products', weight: 40 },
+                        { method: GET, resource: 'users', weight: 20 },
+                        { method: POST, resource: 'orders', weight: 20 },
+                        { method: PUT, resource: 'products', weight: 10 },
+                        { method: DELETE, resource: 'orders', weight: 10 },
                     ],
+                    phases: [phase('Warm-up', 6, 15), phase('Peak', 12, 36), phase('Cool-down', 6, 15)],
                 },
             },
         ],
         availableResources: [
-            { type: ServiceType.CACHE, count: 1 },
-            { type: ServiceType.MESSAGE_QUEUE, count: 1 },
+            { type: CACHE, count: 1 },
+            { type: MQ, count: 1 },
         ],
         stars: [
             {
-                // ★1: downstream paths built, origin unfiltered — traffic still flows randomly to both backends
                 label: 'Both paths built',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(REST, CACHE, DB), path(REST, MQ, DB), noPath(REST, DB)],
+                thresholds: [metric('errorRate', '<', 20)],
             },
             {
-                // ★2: origin split by method + downstream paths present; downstream trusted to route correctly
-                label: 'Origin traffic split',
+                label: 'Traffic split at the source',
                 conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
+                    path(REST, CACHE, DB),
+                    path(REST, MQ, DB),
+                    noPath(REST, DB),
+                    filtered(ORIGIN, REST, READS),
+                    filtered(ORIGIN, REST, WRITES),
                 ],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 1500)],
             },
             {
-                // ★3: origin and downstream both filtered — explicit routing end-to-end, defense in depth
-                label: 'Double-ruled paths',
+                label: 'Ruled end to end',
                 conditions: [
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.REST_SERVICE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
+                    path(REST, CACHE, DB),
+                    path(REST, MQ, DB),
+                    noPath(REST, DB),
+                    filtered(ORIGIN, REST, READS),
+                    filtered(ORIGIN, REST, WRITES),
+                    filtered(REST, CACHE, READS),
+                    filtered(REST, MQ, WRITES),
                 ],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 800)],
             },
         ],
     },
@@ -821,129 +460,60 @@ export const CHALLENGE_DEFINITIONS: ChallengeDefinition[] = [
         name: 'Full Stack',
         description: 'Greenfield project. You have an Origin, a Database, and a blank canvas.',
         briefing:
-            'New company, new system. The investors want a demo in an hour. ' +
+            'New company, new system, and the investors want a demo in an hour. ' +
             'All you have is an Origin generating traffic and a Database to persist it. ' +
-            'The palette has everything you need: a Gateway for access control, a Load Balancer for scale, ' +
-            'two REST Services for business logic, a Cache for read performance, and a Message Queue for write resilience. ' +
-            'Build something you would be proud to put in production.',
+            'The palette has a Gateway for access control, a Load Balancer for scale, ' +
+            'two REST Services for business logic, a Cache for reads and a Message Queue for writes. ' +
+            'The launch peak is more than one backend can take. Build something you would be proud to put in production.',
         services: [
-            { type: ServiceType.ORIGIN, gridX: 0, gridY: 6, locked: true },
-            { type: ServiceType.DATABASE, gridX: 17, gridY: 5, locked: true },
+            { type: ORIGIN, gridX: 0, gridY: 6 },
+            { type: DB, gridX: 17, gridY: 5 },
         ],
         connections: [],
         traffic: [
             {
                 originIndex: 0,
                 pattern: {
-                    requestsPerSecond: 40,
+                    requestsPerSecond: 15,
                     distribution: [
-                        { method: RequestMethod.GET, resource: 'products', weight: 40 },
-                        { method: RequestMethod.GET, resource: 'users', weight: 20 },
-                        { method: RequestMethod.POST, resource: 'orders', weight: 20 },
-                        { method: RequestMethod.PUT, resource: 'products', weight: 10 },
-                        { method: RequestMethod.DELETE, resource: 'orders', weight: 10 },
+                        { method: GET, resource: 'products', weight: 45 },
+                        { method: GET, resource: 'users', weight: 20 },
+                        { method: POST, resource: 'orders', weight: 20 },
+                        { method: PUT, resource: 'products', weight: 8 },
+                        { method: DELETE, resource: 'orders', weight: 7 },
                     ],
+                    phases: [phase('Warm-up', 6, 15), phase('Launch', 12, 55), phase('Cool-down', 6, 15)],
                 },
             },
         ],
         availableResources: [
-            { type: ServiceType.API_GATEWAY, count: 1 },
-            { type: ServiceType.LOAD_BALANCER, count: 1 },
-            { type: ServiceType.REST_SERVICE, count: 2 },
-            { type: ServiceType.CACHE, count: 1 },
-            { type: ServiceType.MESSAGE_QUEUE, count: 1 },
+            { type: GW, count: 1 },
+            { type: LB, count: 1 },
+            { type: REST, count: 2 },
+            { type: CACHE, count: 1 },
+            { type: MQ, count: 1 },
         ],
         stars: [
             {
-                // ★1: minimal demo — GW + one REST reach DB, no LB, no cache, no MQ; works but fragile
                 label: 'Minimal demo',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.API_GATEWAY,
-                            ServiceType.REST_SERVICE,
-                            ServiceType.DATABASE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathNotExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.ORIGIN, ServiceType.API_GATEWAY, ServiceType.LOAD_BALANCER],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [path(ORIGIN, GW, REST, DB), noPath(ORIGIN, GW, LB)],
+                thresholds: [metric('throughput', '>=', 15)],
             },
             {
-                // ★2: all components placed and wired, both backends via LB, Cache and MQ in use — but no filters
                 label: 'Use everything',
-                conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.API_GATEWAY,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE, ServiceType.DATABASE],
-                        sustainMs: 0,
-                    },
-                ],
+                conditions: [paths(2, ORIGIN, GW, LB, REST), path(REST, CACHE, DB), path(REST, MQ, DB)],
+                thresholds: [metric('errorRate', '<', 20)],
             },
             {
-                // ★3: both backends, Cache GET-only, MQ write-only — optimal and explicit
                 label: 'Production ready',
                 conditions: [
-                    {
-                        metric: 'pathExists',
-                        operator: '>=',
-                        value: 2,
-                        path: [
-                            ServiceType.ORIGIN,
-                            ServiceType.API_GATEWAY,
-                            ServiceType.LOAD_BALANCER,
-                            ServiceType.REST_SERVICE,
-                        ],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.CACHE],
-                        requiredMethods: [RequestMethod.GET],
-                        sustainMs: 0,
-                    },
-                    {
-                        metric: 'filteredPathExists',
-                        operator: '>=',
-                        value: 1,
-                        path: [ServiceType.REST_SERVICE, ServiceType.MESSAGE_QUEUE],
-                        requiredMethods: [RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE],
-                        sustainMs: 0,
-                    },
+                    paths(2, ORIGIN, GW, LB, REST),
+                    path(REST, CACHE, DB),
+                    path(REST, MQ, DB),
+                    filtered(REST, CACHE, READS),
+                    filtered(REST, MQ, WRITES),
                 ],
+                thresholds: [metric('errorRate', '<', 1), metric('p95Latency', '<', 1000)],
             },
         ],
     },

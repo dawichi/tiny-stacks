@@ -28,15 +28,28 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
 
       <!-- Packets -->
       @for (packet of packets(); track $index) {
-        <circle
-          [attr.cx]="packet.x"
-          [attr.cy]="packet.y"
-          [attr.r]="packet.isResponse ? 4 : 5"
-          [attr.fill]="packet.color"
-          [attr.stroke]="packet.isResponse ? 'white' : 'none'"
-          [attr.stroke-width]="packet.isResponse ? 2 : 0"
-          class="packet"
-        />
+        @if (packet.async) {
+          <!-- Message Queue delivery: nobody waits for it, so it is drawn as a hollow ring -->
+          <circle
+            [attr.cx]="packet.x"
+            [attr.cy]="packet.y"
+            r="4"
+            fill="white"
+            [attr.stroke]="packet.color"
+            stroke-width="2"
+            class="packet"
+          />
+        } @else {
+          <circle
+            [attr.cx]="packet.x"
+            [attr.cy]="packet.y"
+            [attr.r]="packet.isResponse ? 4 : 5"
+            [attr.fill]="packet.color"
+            [attr.stroke]="packet.isResponse ? 'white' : 'none'"
+            [attr.stroke-width]="packet.isResponse ? 2 : 0"
+            class="packet"
+          />
+        }
       }
 
       <!-- Drag preview -->
@@ -79,7 +92,7 @@ export class ConnectionLayerComponent {
     readonly boardWidth = input.required<number>();
     readonly boardHeight = input.required<number>();
     readonly selectedConnectionId = input<string | null>(null);
-    readonly packets = input<{ x: number; y: number; color: string; isResponse: boolean }[]>([]);
+    readonly packets = input<{ x: number; y: number; color: string; isResponse: boolean; async: boolean }[]>([]);
     readonly dragPreviewSource = input<PortRef | null>(null);
     readonly dragPreviewCursor = input<{ x: number; y: number } | null>(null);
 

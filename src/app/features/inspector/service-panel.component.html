@@ -30,6 +30,35 @@
     <!-- Description -->
     <p class="text-xs text-slate-500 mb-3 leading-relaxed">{{ config()!.description }}</p>
 
+    @if (isOrigin() && sandboxMode()) {
+      <div class="mb-3 rounded-lg bg-white/55 p-2.5">
+        <div class="mb-1 flex items-center justify-between">
+          <label for="origin-rps" class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+            Traffic rate
+          </label>
+          <span class="text-xs font-semibold text-slate-700">{{ originRps() }} req/s</span>
+        </div>
+        <input
+          id="origin-rps"
+          class="w-full accent-sky-500"
+          type="range"
+          min="1"
+          max="200"
+          step="1"
+          [value]="originRps()"
+          [disabled]="!editable()"
+          (input)="onOriginRpsChange($event)"
+        />
+        <button
+          class="mt-2 w-full rounded-md border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] font-semibold text-amber-700 transition-colors hover:bg-amber-100 disabled:cursor-not-allowed disabled:opacity-50"
+          [disabled]="!editable()"
+          (click)="onSpike()"
+        >
+          Spike traffic · 5× for 5s
+        </button>
+      </div>
+    }
+
     <!-- Live stats (when simulation running + not Origin) -->
     @if (showLiveStats()) {
       <div class="mb-3">
@@ -140,6 +169,7 @@
                 class="w-4 h-4 flex items-center justify-center rounded
                        opacity-0 group-hover:opacity-100 transition-opacity
                        hover:bg-red-100 text-red-400 hover:text-red-600"
+                [disabled]="!editable()"
                 (click)="onDeleteConnection(conn.id)"
               >
                 <lucide-icon [img]="XIcon" [size]="10" />
@@ -158,6 +188,7 @@
       <button
         class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs
                text-red-500 hover:bg-red-50/60 transition-colors border border-red-200/50"
+        [disabled]="!editable()"
         (click)="onDelete()"
       >
         <lucide-icon [img]="Trash2Icon" [size]="12" />

@@ -5,85 +5,102 @@
 <h1 align="center">tiny-stacks</h1>
 
 <p align="center">
-  A 2D microservices simulation game where you place services, connect them, and watch request packets flow through your system.
+  A browser game for building microservice architectures and seeing how traffic moves through them.
 </p>
 
 <p align="center">
-  <a href="https://tiny-stacks.dawichi.dev">Play it live</a> · <a href="#screenshots">Screenshots</a> · <a href="#how-to-play">How to play</a>
+  <a href="https://tiny-stacks.dawichi.dev">Play it live</a> ·
+  <a href="#screenshots">Screenshots</a> ·
+  <a href="#how-to-play">How to play</a>
 </p>
+
+[![CI](https://github.com/dawichi/tiny-stacks/actions/workflows/ci.yml/badge.svg)](https://github.com/dawichi/tiny-stacks/actions/workflows/ci.yml)
 
 ---
 
 ## What is this?
 
-tiny-stacks is a browser game that turns backend architecture into a visual, interactive puzzle. You drag-and-drop services onto a grid (REST APIs, databases, caches, load balancers, message queues), connect their ports, and watch HTTP requests flow through the system as animated packets.
+tiny-stacks turns backend architecture into a visual puzzle. Place REST services, databases, caches, load balancers,
+message queues, and gateways on a grid. Connect their ports, then watch animated requests reveal how the system handles
+normal traffic, a peak, or a service outage.
 
-It's designed to make microservice patterns intuitive: you can *see* why a cache reduces database load, *watch* a message queue absorb write bursts, and *feel* the difference a load balancer makes when traffic spikes.
-
-No backend required. Runs entirely in the browser.
+The game runs entirely in your browser. It has no backend; boards and progress are saved in local storage.
 
 ## Screenshots
 
+Watch a short [Sandbox demo with live traffic and a 5× spike](public/screenshots/tiny-stacks-demo.mp4) (MP4).
+
 <p align="center">
-  <img src="public/screenshots/home-page.png" alt="Home page: tutorial, sandbox, and challenges" width="720" />
+  <img src="public/screenshots/home-page.png" alt="Home page with the optional tutorial, Sandbox, and Challenges" width="720" />
 </p>
 
 <p align="center">
-  <img src="public/screenshots/challenges.png" alt="Challenges: progressive puzzles with star ratings" width="720" />
+  <img src="public/screenshots/challenges.png" alt="Progressive architecture challenges with star ratings" width="720" />
 </p>
 
 ## How to play
 
-**Core loop:** Place > Connect > Watch > Optimize
+**Core loop:** Place → Connect → Watch → Optimize
 
-You have 4 actions:
-- **Place** a service from the palette onto the grid
-- **Connect** two ports by dragging from an output to an input
-- **Disconnect** a connection by selecting it and pressing Delete
-- **Set route rules** on a connection to filter traffic by HTTP method (GET, POST, PUT, DELETE)
+- **Place** services from the palette onto the grid.
+- **Connect** an output port to an input port.
+- **Configure** route rules to send selected HTTP methods down each connection.
+- Select and delete a service or connection to remove it.
 
 ### Game modes
 
 | Mode | Description |
 |------|-------------|
-| **Tutorial** | Interactive walkthrough that teaches all 4 mechanics step by step |
-| **Sandbox** | Unlimited creative building, no goals, just experimentation |
-| **Challenges** | 8 progressive puzzles with 3-star ratings and win conditions |
+| **Tutorial** | Recommended, optional walkthrough of the core mechanics. |
+| **Sandbox** | An editable example system, live metrics, adjustable Origin traffic, and no goals. |
+| **Challenges** | Eight deploy scenarios. The first is open immediately; later levels unlock as you earn stars. |
 
 ### Services
 
 | Service | What it does |
 |---------|-------------|
-| **Origin** | Traffic source that spawns HTTP requests at a configurable rate |
-| **API Gateway** | Entry point with low-latency routing |
-| **REST Service** | Business logic, the main bottleneck at high load |
-| **Database** | Persistent storage, slow with limited concurrency |
-| **Cache** | Fast reads with HIT/MISS mechanics and automatic invalidation |
-| **Message Queue** | Async buffer that absorbs write bursts and decouples producers from consumers |
-| **Load Balancer** | Distributes traffic across downstream services |
+| **Origin** | Generates HTTP requests. In Sandbox, select an Origin to set its rate from 1 to 200 requests per second or trigger a temporary 5× spike. |
+| **API Gateway** | Provides a low-latency entry point for routing. |
+| **REST Service** | Runs application logic and becomes a bottleneck under load. |
+| **Database** | Stores data with limited concurrency and a cost per operation. |
+| **Cache** | Serves repeated reads quickly, expires entries, and invalidates them after writes reach its backing database. |
+| **Message Queue** | Acknowledges writes, then delivers them asynchronously. Reads sent to a queue fail because it cannot return data. |
+| **Load Balancer** | Routes requests to the least busy healthy backend. |
+
+## Design decisions
+
+- **Angular signals for local state.** The board, selected items, metrics, and challenge progress are naturally scoped to one browser session. Signals keep updates direct without adding a global state framework.
+- **A plain TypeScript simulation.** `Simulation` owns the request lifecycle; Angular's `TickEngineService` advances it in fixed steps and publishes snapshots for the UI. Simulated time drives traffic, outages, cache expiry, and metric windows, so results do not depend on wall-clock timing.
+- **Seeded challenge runs.** Each challenge uses a stable random seed, so routing and request mixes repeat when a player retries a deployment.
+- **Declarative challenges.** Levels describe their starting board, traffic, resource limits, topology requirements, and metric thresholds as data. A player earns a star only when both the topology and the deployment results meet that tier's requirements.
+- **Mode-owned persistence.** Sandbox saves a versioned, validated board and per-Origin rates. Tutorial and Challenges load their own boards without overwriting the Sandbox.
+
+More detail on level goals and calibration is in [`docs/challenges.md`](docs/challenges.md). Fixed UI positions are mapped in [`docs/ui-zones.md`](docs/ui-zones.md).
 
 ## Tech stack
 
-- **Angular 21** with Signals, standalone components, and new control flow
-- **TailwindCSS v4** for utility-first styling
-- **Pure SVG** for connections, packets, and animations (no canvas or WebGL)
-- **No backend**, state lives in localStorage
+- Angular 21 with Signals, standalone components, and the new control flow syntax
+- TailwindCSS v4
+- SVG connections, packets, and animations
+- Bun, Biome, and Vitest
 
 ## Running locally
 
-```bash
-# Install dependencies
+```sh
 bun install
-
-# Start dev server at localhost:4200
 bun start
-
-# Run tests
-bun run test
-
-# Lint & format check
-bun run check
 ```
+
+The dev server runs at `http://localhost:4200`.
+
+```sh
+bun run build
+bun run check
+bun run test
+```
+
+GitHub Actions runs `bun run check` and `bun run build` on pushes and pull requests. This repository contains no
+deployment workflow; the production site is at [tiny-stacks.dawichi.dev](https://tiny-stacks.dawichi.dev).
 
 ## License
 

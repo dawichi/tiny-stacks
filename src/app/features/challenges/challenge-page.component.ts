@@ -1,23 +1,23 @@
-import { Component, computed, inject, OnDestroy, OnInit, signal } from '@angular/core';
-import { ActivatedRoute, Router, RouterLink } from '@angular/router';
-import { ArrowLeft, LucideAngularModule, Play, RotateCcw, Star, X } from 'lucide-angular';
+import { DecimalPipe } from '@angular/common';
+import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { ActivatedRoute, Router } from '@angular/router';
+import { ArrowLeft, LucideAngularModule, Play, RotateCcw, Star } from 'lucide-angular';
+import type { RunMetric } from '../../core/challenges/challenge.model';
 import { ChallengeService } from '../../core/challenges/challenge.service';
-import { TickEngineService } from '../../core/game/tick-engine.service';
+import { GameStateService } from '../../core/game/game-state.service';
+import type { SimSpeed } from '../../core/game/tick-engine.service';
+import { SIM_SPEEDS, TickEngineService } from '../../core/game/tick-engine.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
 import { ServicePaletteComponent } from '../palette/service-palette.component';
 import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
 
-interface StarToast {
-    id: number;
-    starIndex: number;
-}
-
 @Component({
     selector: 'app-challenge-page',
     standalone: true,
     imports: [
-        RouterLink,
+        DecimalPipe,
         LucideAngularModule,
         GameBoardComponent,
         ServicePaletteComponent,
@@ -27,179 +27,150 @@ interface StarToast {
     templateUrl: './challenge-page.component.html',
     styles: [
         `
-    :host {
-      display: block;
+    :host { display: block; }
+    @keyframes panel-in {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
     }
-    @keyframes toast-in {
-      from { opacity: 0; transform: translateX(12px); }
-      to   { opacity: 1; transform: translateX(0); }
-    }
-    .toast-in {
-      animation: toast-in 200ms ease-out;
-    }
+    .panel-in { animation: panel-in 200ms ease-out; }
   `,
     ],
 })
-export class ChallengePageComponent implements OnInit, OnDestroy {
-    // ── Injected Services ──────────────────────────────────────────────
+export class ChallengePageComponent implements OnInit {
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    private readonly destroyRef = inject(DestroyRef);
     private readonly challengeService = inject(ChallengeService);
     private readonly tickEngine = inject(TickEngineService);
+    protected readonly gameState = inject(GameStateService);
 
-    // ── Icon references ────────────────────────────────────────────────
     protected readonly ArrowLeftIcon = ArrowLeft;
-    protected readonly StarIcon = Star;
     protected readonly PlayIcon = Play;
     protected readonly RetryIcon = RotateCcw;
-    protected readonly XIcon = X;
-
-    // ── State ──────────────────────────────────────────────────────────
-    protected readonly showBriefing = signal(true);
-    protected readonly showVictory = signal(false);
-    protected readonly starToasts = signal<StarToast[]>([]);
+    protected readonly StarIcon = Star;
 
     protected readonly challenge = this.challengeService.activeChallenge;
-    protected readonly starStatus = this.challengeService.starStatus;
+    protected readonly phase = this.challengeService.phase;
+    protected readonly lastResult = this.challengeService.lastResult;
+    protected readonly results = computed(() => (this.phase() === 'results' ? this.lastResult() : null));
+    protected readonly run = this.tickEngine.run;
+    protected readonly metrics = this.tickEngine.metrics;
+    protected readonly speed = this.tickEngine.speed;
+    protected readonly showBriefing = signal(true);
 
-    protected readonly allowedResources = computed(() => {
-        return this.challenge()?.availableResources ?? null;
+    protected readonly allowedResources = computed(() => this.challenge()?.availableResources ?? null);
+    protected readonly topologyStars = this.challengeService.topologyStars;
+    protected readonly starStatus = computed(() => {
+        const challenge = this.challenge();
+        if (!challenge) return [false, false, false] as const;
+        const earned = this.challengeService.progress()[challenge.id]?.starsEarned ?? 0;
+        return [earned >= 1, earned >= 2, earned >= 3] as const;
     });
-
-    protected readonly starsEarned = computed(() => {
-        return this.starStatus().filter(Boolean).length;
-    });
-
-    protected readonly formattedTime = computed(() => {
-        const ms = this.challengeService.elapsedMs();
-        const seconds = Math.floor(ms / 1000);
-        const minutes = Math.floor(seconds / 60);
-        const secs = seconds % 60;
-        return `${minutes}:${secs.toString().padStart(2, '0')}`;
-    });
-
     protected readonly starDetails = computed(() => {
-        const ch = this.challenge();
-        const status = this.starStatus();
-        if (!ch) return [];
-        return ch.stars.map((star, i) => ({
-            earned: status[i],
-            label: star.label,
+        const challenge = this.challenge();
+        const result = this.lastResult();
+        if (!challenge) return [];
+        return challenge.stars.map((tier, index) => ({
+            label: tier.label,
+            earned: result ? result.tiers[index].earned : this.starStatus()[index],
         }));
     });
-
     protected readonly hasNextLevel = computed(() => {
-        const defs = this.challengeService.getDefinitions();
         const current = this.challenge();
-        if (!current) return false;
-        const idx = defs.findIndex((d) => d.id === current.id);
-        return idx < defs.length - 1;
+        const definitions = this.challengeService.getDefinitions();
+        return current !== null && definitions.findIndex((d) => d.id === current.id) < definitions.length - 1;
+    });
+    protected readonly starsEarned = computed(() => this.lastResult()?.stars ?? 0);
+    protected readonly runProgress = computed(() => {
+        const current = this.run();
+        if (!current || current.durationMs <= 0) return 0;
+        return Math.min(100, (current.elapsedMs / current.durationMs) * 100);
     });
 
-    // ── Private state ──────────────────────────────────────────────────
-    private previousStarStatus: [boolean, boolean, boolean] = [false, false, false];
-    private toastCounter = 0;
-    private victoryCheckInterval: ReturnType<typeof setInterval> | null = null;
-    private toastTimers: ReturnType<typeof setTimeout>[] = [];
-
-    // ── Lifecycle ──────────────────────────────────────────────────────
     ngOnInit(): void {
-        const id = this.route.snapshot.paramMap.get('id');
-        if (id) {
-            this.challengeService.loadChallenge(id);
-            if (!this.challenge()) {
+        this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
+            const id = params.get('id');
+            if (!id || !this.challengeService.loadChallenge(id)) {
                 this.router.navigate(['/challenges']);
+                return;
             }
-        }
+            this.showBriefing.set(true);
+            this.tickEngine.speed.set(1);
+        });
 
-        this.victoryCheckInterval = setInterval(() => {
-            if (this.showBriefing() || this.showVictory()) return;
-
-            const current = this.starStatus();
-
-            for (let i = 0; i < 3; i++) {
-                if (current[i] && !this.previousStarStatus[i]) {
-                    this.addToast(i);
-                }
-            }
-            this.previousStarStatus = [...current] as [boolean, boolean, boolean];
-
-            if (current.every(Boolean)) {
-                this.showResults();
-            }
-        }, 200);
+        this.destroyRef.onDestroy(() => this.challengeService.unloadChallenge());
     }
 
-    ngOnDestroy(): void {
-        if (this.victoryCheckInterval) clearInterval(this.victoryCheckInterval);
-        for (const t of this.toastTimers) clearTimeout(t);
-        this.challengeService.unloadChallenge();
-    }
-
-    // ── Methods ────────────────────────────────────────────────────────
     protected onStart(): void {
         this.showBriefing.set(false);
         this.tickEngine.start();
     }
 
-    protected onBack(): void {
-        this.challengeService.unloadChallenge();
+    protected onDeploy(): void {
+        this.challengeService.deploy();
+        this.tickEngine.start();
     }
 
-    protected onContinue(): void {
-        this.showVictory.set(false);
+    protected onKeepBuilding(): void {
+        this.challengeService.keepBuilding();
         this.tickEngine.start();
     }
 
     protected onRetry(): void {
-        this.showVictory.set(false);
-        this.starToasts.set([]);
-        this.previousStarStatus = [false, false, false];
         const current = this.challenge();
-        if (current) {
-            this.challengeService.loadChallenge(current.id);
-            this.showBriefing.set(true);
-        }
+        if (current && this.challengeService.loadChallenge(current.id)) this.showBriefing.set(true);
     }
 
     protected onNextLevel(): void {
-        this.showVictory.set(false);
-        const defs = this.challengeService.getDefinitions();
+        const definitions = this.challengeService.getDefinitions();
         const current = this.challenge();
         if (!current) return;
-        const idx = defs.findIndex((d) => d.id === current.id);
-        if (idx < defs.length - 1) {
-            const next = defs[idx + 1];
-            this.router.navigate(['/challenges', next.id]);
-            this.challengeService.loadChallenge(next.id);
-            this.showBriefing.set(true);
+        const index = definitions.findIndex((d) => d.id === current.id);
+        if (index >= 0 && index < definitions.length - 1) {
+            this.router.navigate(['/challenges', definitions[index + 1].id]);
         }
     }
 
-    protected onViewResults(): void {
-        this.showResults();
+    protected onBack(): void {
+        this.router.navigate(['/challenges']);
     }
 
-    protected dismissToast(id: number): void {
-        this.starToasts.update((toasts) => toasts.filter((t) => t.id !== id));
+    protected cycleSpeed(): void {
+        const index = SIM_SPEEDS.indexOf(this.speed());
+        const next: SimSpeed = SIM_SPEEDS[(index + 1) % SIM_SPEEDS.length];
+        this.tickEngine.speed.set(next);
     }
 
-    protected ordinal(starIndex: number): string {
-        return (['1st', '2nd', '3rd'] as const)[starIndex] ?? `${starIndex + 1}th`;
+    protected formatMetric(metric: RunMetric, value: number): string {
+        switch (metric) {
+            case 'errorRate':
+                return `${value.toFixed(1)}%`;
+            case 'avgLatency':
+            case 'p95Latency':
+                return `${Math.round(value)} ms`;
+            case 'throughput':
+                return `${value.toFixed(1)}/s`;
+            case 'cost':
+                return `$${value.toFixed(0)}`;
+            case 'dbOperations':
+                return `${Math.round(value)} ops`;
+        }
     }
 
-    // ── Private ────────────────────────────────────────────────────────
-    private showResults(): void {
-        this.starToasts.set([]);
-        this.showVictory.set(true);
-        this.tickEngine.stop();
-        this.challengeService.saveProgress();
-    }
-
-    private addToast(starIndex: number): void {
-        const id = this.toastCounter++;
-        this.starToasts.update((toasts) => [...toasts, { id, starIndex }]);
-        const timer = setTimeout(() => this.dismissToast(id), 4000);
-        this.toastTimers.push(timer);
+    protected metricLabel(metric: RunMetric): string {
+        switch (metric) {
+            case 'errorRate':
+                return 'Error rate';
+            case 'avgLatency':
+                return 'Average latency';
+            case 'p95Latency':
+                return 'P95 latency';
+            case 'throughput':
+                return 'Throughput';
+            case 'cost':
+                return 'Deploy cost';
+            case 'dbOperations':
+                return 'Database operations';
+        }
     }
 }

@@ -1,9 +1,8 @@
-import { Component, computed, HostListener, inject, signal } from '@angular/core';
-import { ChallengeService } from '../../core/challenges/challenge.service';
-import { GameStateService, type PortRef } from '../../core/game/game-state.service';
+import { Component, computed, HostListener, inject, input, signal } from '@angular/core';
+import { GameStateService, isServiceType, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
-import { type ServiceVisualState, TickEngineService } from '../../core/game/tick-engine.service';
+import { DEFAULT_TRAFFIC, type ServiceVisualState, TickEngineService } from '../../core/game/tick-engine.service';
 import { ConnectionLayerComponent } from '../connections/connection-layer.component';
 import { ServiceComponent } from '../services/service.component';
 import { BoardToolbarComponent } from './board-toolbar.component';
@@ -36,7 +35,10 @@ export class GameBoardComponent {
     // ── Injected Services ──────────────────────────────────────────────
     protected readonly gameState = inject(GameStateService);
     protected readonly simulation = inject(TickEngineService);
-    private readonly challengeService = inject(ChallengeService);
+
+    // ── Inputs ─────────────────────────────────────────────────────────
+    /** Placement limits (challenges, tutorial). null = unlimited (sandbox). */
+    readonly availableResources = input<{ type: ServiceType; count: number }[] | null>(null);
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);
@@ -147,7 +149,7 @@ export class GameBoardComponent {
                 if (!curve) return null;
                 const t = p.direction === 'response' ? 1 - p.progress : p.progress;
                 const pos = evaluateBezier(t, curve);
-                return { x: pos.x, y: pos.y, color: p.color, isResponse: p.direction === 'response' };
+                return { x: pos.x, y: pos.y, color: p.color, isResponse: p.direction === 'response', async: p.async };
             })
             .filter((p) => p !== null);
     });
@@ -176,24 +178,37 @@ export class GameBoardComponent {
     // ── Keyboard handlers ─────────────────────────────────────────────
     @HostListener('window:keydown', ['$event'])
     protected onKeyDown(event: KeyboardEvent): void {
-        const mod = event.metaKey || event.ctrlKey;
+        // Keys typed into form controls belong to them (sliders, toggles, future text fields)
+        if (isEditableTarget(event.target)) return;
 
-        if (mod && event.key === 'z' && !event.shiftKey) {
+        const mod = event.metaKey || event.ctrlKey;
+        const key = event.key.toLowerCase();
+
+        if (mod && key === 'z' && !event.shiftKey) {
             event.preventDefault();
             this.gameState.undo();
             return;
         }
 
-        if ((mod && event.key === 'z' && event.shiftKey) || (mod && event.key === 'y')) {
+        if ((mod && key === 'z' && event.shiftKey) || (mod && key === 'y')) {
             event.preventDefault();
             this.gameState.redo();
             return;
         }
 
+        if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+
         const selectedConn = this.gameState.selectedConnectionId();
-        if ((event.key === 'Delete' || event.key === 'Backspace') && selectedConn) {
+        if (selectedConn) {
             event.preventDefault();
             this.gameState.removeConnection(selectedConn);
+            return;
+        }
+
+        const selectedService = this.gameState.selectedServiceId();
+        if (selectedService && !this.gameState.isLocked(selectedService)) {
+            event.preventDefault();
+            this.gameState.removeService(selectedService);
         }
     }
 
@@ -231,11 +246,12 @@ export class GameBoardComponent {
     protected onDrop(event: DragEvent): void {
         event.preventDefault();
 
-        const typeStr = event.dataTransfer?.getData('application/service-type');
+        const type = event.dataTransfer?.getData('application/service-type');
         const pos = this.eventToGrid(event);
 
-        if (typeStr && pos) {
-            this.gameState.addService(typeStr as ServiceType, pos.gridX, pos.gridY);
+        // The drag payload comes from outside Angular: check it before trusting it
+        if (isServiceType(type) && pos && this.hasRemaining(type)) {
+            this.gameState.addService(type, pos.gridX, pos.gridY);
         }
 
         this.hoverPosition.set(null);
@@ -292,7 +308,7 @@ export class GameBoardComponent {
 
     // ── Move drag ─────────────────────────────────────────────────────
     protected onMoveDragStart(event: { serviceId: string }): void {
-        if (this.connectionDragSource() || this.isServiceLocked(event.serviceId)) return;
+        if (this.connectionDragSource() || !this.gameState.editable() || this.isServiceLocked(event.serviceId)) return;
         this.moveDragServiceId.set(event.serviceId);
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(event.serviceId);
@@ -303,13 +319,27 @@ export class GameBoardComponent {
     }
 
     protected isServiceLocked(serviceId: string): boolean {
-        return this.challengeService.lockedServiceIds().has(serviceId);
+        return this.gameState.isLocked(serviceId);
     }
 
     protected getOriginRps(serviceId: string, type: ServiceType): number | null {
         if (type !== ServiceType.ORIGIN) return null;
-        const override = this.simulation.trafficOverrides().get(serviceId);
-        return override?.requestsPerSecond ?? 10;
+        const pattern = this.simulation.trafficOverrides().get(serviceId) ?? DEFAULT_TRAFFIC;
+        const run = this.simulation.run();
+        if (!run || run.finished || !pattern.phases?.length) return pattern.requestsPerSecond;
+        let start = 0;
+        for (const phase of pattern.phases) {
+            if (run.elapsedMs < start + phase.durationMs) return phase.requestsPerSecond;
+            start += phase.durationMs;
+        }
+        return 0;
+    }
+
+    private hasRemaining(type: ServiceType): boolean {
+        const resources = this.availableResources();
+        if (resources === null) return true;
+        const limit = resources.find((r) => r.type === type)?.count ?? 0;
+        return this.gameState.placedByPlayer(type) < limit;
     }
 
     // ── Private helpers ────────────────────────────────────────────────
@@ -337,4 +367,14 @@ export class GameBoardComponent {
 
         return { gridX, gridY };
     }
+}
+
+function isEditableTarget(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return (
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement ||
+        target.isContentEditable
+    );
 }

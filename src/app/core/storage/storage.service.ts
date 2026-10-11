@@ -11,21 +11,31 @@ export enum StorageKeys {
     TUTORIAL_COMPLETE = 'tiny-stacks-tutorial-complete',
 }
 
+/** Current version of the persisted sandbox board. Bump when the shape changes. */
+export const SANDBOX_STATE_VERSION = 1;
+
+/** Persisted sandbox board */
+export interface SandboxState {
+    version: number;
+    services: PlacedService[];
+    connections: Connection[];
+    /** Requests per second per Origin id */
+    originRps?: Record<string, number>;
+}
+
 // -----------------------------------------------------
 // Type mapping - {key -> structure} associations
 // -----------------------------------------------------
 type StorageSchema = {
-    [StorageKeys.GAME_STATE]: {
-        services: PlacedService[];
-        connections: Connection[];
-    };
+    [StorageKeys.GAME_STATE]: SandboxState;
     [StorageKeys.CHALLENGE_PROGRESS]: ChallengeProgress;
     [StorageKeys.TUTORIAL_COMPLETE]: true;
 };
 
 /**
  * Typed localStorage wrapper.
- * Provides compile-time type safety based on the key used.
+ * Provides compile-time type safety based on the key used. Values read back are untrusted:
+ * callers must validate them (see `storage-schema.ts`).
  */
 @Injectable({ providedIn: 'root' })
 export class StorageService {
@@ -49,7 +59,10 @@ export class StorageService {
         localStorage.removeItem(key);
     }
 
+    /** Remove every key owned by tiny-stacks (leaves other data on the same origin alone) */
     clearAll(): void {
-        localStorage.clear();
+        for (const key of Object.values(StorageKeys)) {
+            localStorage.removeItem(key);
+        }
     }
 }

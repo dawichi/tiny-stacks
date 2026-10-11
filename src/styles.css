@@ -1,0 +1,37 @@
+@import "tailwindcss";
+
+/* Custom styles */
+:root {
+    /* Pastel Color Palette */
+    --color-peach: #ffcba4;
+    --color-coral: #ff8b8b;
+    --color-cream: #fff5e1;
+    --color-soft-gold: #ffe5a0;
+    --color-mint: #a8e6cf;
+    --color-lavender: #d4a5ff;
+    --color-sky-blue: #87ceeb;
+    --color-soft-teal: #88d8d8;
+    --color-slate: #708090;
+    --color-soft-gray: #b8c4ce;
+    --color-off-white: #faf9f6;
+
+    /* Request type colors */
+    --color-get: #87ceeb;
+    --color-post: #a8e6cf;
+    --color-put: #ffe5a0;
+    --color-delete: #ffcba4;
+    --color-error: #ff8b8b;
+    --color-success: #a8e6cf;
+}
+
+html,
+body {
+    min-height: 100%;
+    margin: 0;
+    padding: 0;
+}
+
+svg.star-filled {
+    fill: currentColor;
+    filter: drop-shadow(0 0 3px rgba(251, 191, 36, 0.4));
+}

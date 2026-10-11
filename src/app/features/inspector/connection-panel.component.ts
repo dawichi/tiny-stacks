@@ -45,6 +45,7 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
                 [style.background-color]="isMethodActive(m) ? methodColor(m) : 'transparent'"
                 [style.color]="isMethodActive(m) ? 'white' : methodColor(m)"
                 [style.border]="'1px solid ' + methodColor(m)"
+                [disabled]="!gameState.editable()"
                 (click)="onToggleMethod(m)"
               >
                 {{ m }}
@@ -64,7 +65,11 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
             min="1"
             max="100"
             [value]="connWeight()"
+            [disabled]="!gameState.editable()"
+            (pointerdown)="onWeightStart()"
+            (keydown)="onWeightStart()"
             (input)="onWeightChange($event)"
+            (change)="onWeightCommit()"
             class="w-full h-1.5 bg-slate-200 rounded-full appearance-none cursor-pointer accent-blue-500"
           />
         </div>
@@ -73,6 +78,7 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
         <button
           class="w-full flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs
                  text-red-500 hover:bg-red-50/60 transition-colors border border-red-200/50"
+          [disabled]="!gameState.editable()"
           (click)="onDelete()"
         >
           <lucide-icon [img]="Trash2Icon" [size]="12" />
@@ -95,7 +101,7 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
 })
 export class ConnectionPanelComponent {
     // ── Injected Services ──────────────────────────────────────────────
-    private readonly gameState = inject(GameStateService);
+    protected readonly gameState = inject(GameStateService);
 
     // ── Icon references ────────────────────────────────────────────────
     protected readonly XIcon = X;
@@ -161,9 +167,24 @@ export class ConnectionPanelComponent {
     protected onWeightChange(event: Event): void {
         const conn = this.selectedConnection();
         if (!conn) return;
+        this.gameState.beginConnectionFilterEdit(conn.id);
         const value = Number.parseInt((event.target as HTMLInputElement).value, 10);
         const currentMethods = conn.filter?.methods ?? [];
-        this.gameState.updateConnectionFilter(conn.id, { methods: currentMethods, weight: value });
+        this.gameState.updateConnectionFilter(
+            conn.id,
+            { methods: currentMethods, weight: value },
+            { recordHistory: false },
+        );
+    }
+
+    protected onWeightStart(): void {
+        const conn = this.selectedConnection();
+        if (conn) this.gameState.beginConnectionFilterEdit(conn.id);
+    }
+
+    protected onWeightCommit(): void {
+        const conn = this.selectedConnection();
+        if (conn) this.gameState.commitConnectionFilterEdit(conn.id);
     }
 
     protected onClose(): void {

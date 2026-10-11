@@ -2,7 +2,7 @@
 
   <!-- Header -->
   <header class="max-w-5xl mx-auto mb-6 flex items-center gap-4">
-    <a routerLink="/" class="text-slate-400 hover:text-slate-600 transition-colors">
+    <a routerLink="/" class="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Back to home">
       <lucide-icon [img]="ArrowLeftIcon" [size]="20" />
     </a>
     <div>
@@ -13,7 +13,7 @@
 
   <!-- Board -->
   <div class="flex justify-center">
-    <app-game-board />
+      <app-game-board [availableResources]="tutorial.availableResources" />
   </div>
 
   <!-- Palette (fixed bottom-left, Cache only) -->
@@ -90,10 +90,10 @@
 
         <h2 class="text-2xl font-bold text-slate-800 mb-2">Tutorial Complete!</h2>
         <p class="text-slate-600 text-sm leading-relaxed mb-2">
-          You built a read-through cache: reads go through the Cache, writes skip it entirely.
+          You put a Cache in front of the Database: reads can be answered from memory, writes go straight to the Database.
         </p>
         <p class="text-slate-500 text-xs leading-relaxed mb-6">
-          This pattern reduces database load by 80–90% on read-heavy workloads.
+          Notice that reads still pick between both paths at random. Challenge 1 asks you to fix that, under real load.
         </p>
 
         <div class="flex flex-col gap-3">

@@ -126,16 +126,16 @@ export class ServicePaletteComponent {
 
     protected readonly paletteItems = computed<PaletteItem[]>(() => {
         const resources = this.availableResources();
-        const services = this.gameState.services();
+        const editable = this.gameState.editable();
 
         if (resources === null) {
-            return getAllServiceTypes().map((type) => ({ type, remaining: Infinity }));
+            return getAllServiceTypes().map((type) => ({ type, remaining: editable ? Infinity : 0 }));
         }
 
-        return resources.map(({ type, count }) => {
-            const placed = services.filter((s) => s.type === type).length;
-            return { type, remaining: count - placed };
-        });
+        return resources.map(({ type, count }) => ({
+            type,
+            remaining: editable ? count - this.gameState.placedByPlayer(type) : 0,
+        }));
     });
 
     private readonly icons = {

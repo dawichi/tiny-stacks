@@ -1,9 +1,8 @@
 import { Component, computed, inject } from '@angular/core';
 import { Cloud, Database, Globe, LucideAngularModule, Mail, Server, Split, Trash2, X, Zap } from 'lucide-angular';
-import { ChallengeService } from '../../core/challenges/challenge.service';
 import { GameStateService } from '../../core/game/game-state.service';
 import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
-import { TickEngineService } from '../../core/game/tick-engine.service';
+import { DEFAULT_TRAFFIC, TickEngineService } from '../../core/game/tick-engine.service';
 
 @Component({
     selector: 'app-service-panel',
@@ -26,7 +25,6 @@ export class ServicePanelComponent {
     // ── Injected Services ──────────────────────────────────────────────
     private readonly gameState = inject(GameStateService);
     private readonly tickEngine = inject(TickEngineService);
-    private readonly challengeService = inject(ChallengeService);
 
     // ── Icon references ────────────────────────────────────────────────
     protected readonly XIcon = X;
@@ -44,6 +42,15 @@ export class ServicePanelComponent {
 
     // ── Computed signals ───────────────────────────────────────────────
     protected readonly service = this.gameState.selectedService;
+    protected readonly editable = this.gameState.editable;
+    protected readonly sandboxMode = this.tickEngine.sandboxMode;
+    protected readonly originRps = computed(() => {
+        const service = this.service();
+        if (!service) return DEFAULT_TRAFFIC.requestsPerSecond;
+        return (
+            this.tickEngine.trafficOverrides().get(service.id)?.requestsPerSecond ?? DEFAULT_TRAFFIC.requestsPerSecond
+        );
+    });
 
     protected readonly config = computed(() => {
         const s = this.service();
@@ -61,7 +68,7 @@ export class ServicePanelComponent {
 
     protected readonly isLocked = computed(() => {
         const service = this.service();
-        return service ? this.challengeService.lockedServiceIds().has(service.id) : false;
+        return service ? this.gameState.isLocked(service.id) : false;
     });
 
     protected readonly liveVisual = computed(() => {
@@ -136,5 +143,17 @@ export class ServicePanelComponent {
 
     protected onDeleteConnection(connectionId: string): void {
         this.gameState.removeConnection(connectionId);
+    }
+
+    protected onOriginRpsChange(event: Event): void {
+        const service = this.service();
+        const input = event.target;
+        if (!service || !(input instanceof HTMLInputElement)) return;
+        this.tickEngine.setOriginRps(service.id, Number(input.value));
+    }
+
+    protected onSpike(): void {
+        const service = this.service();
+        if (service) this.tickEngine.spike(service.id);
     }
 }
