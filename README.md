@@ -28,7 +28,13 @@ The game runs entirely in your browser. It has no backend; boards and progress a
 
 ## Screenshots
 
-Watch a short [Sandbox demo with live traffic and a 5× spike](public/screenshots/tiny-stacks-demo.mp4) (MP4).
+<p align="center">
+  <img src="public/screenshots/tiny-stacks-demo.gif" alt="Sandbox demo showing a healthy 30 req/s baseline followed by a 5× traffic spike and REST Service overload" width="640" />
+</p>
+
+<p align="center">
+  <a href="https://tiny-stacks.dawichi.dev/screenshots/tiny-stacks-demo.mp4">Watch the 9-second MP4</a>
+</p>
 
 <p align="center">
   <img src="public/screenshots/home-page.png" alt="Home page with the optional tutorial, Sandbox, and Challenges" width="720" />
