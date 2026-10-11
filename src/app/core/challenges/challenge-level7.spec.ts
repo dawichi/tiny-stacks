@@ -5,7 +5,7 @@ import { RequestMethod } from '../game/sim-types';
 import { TickEngineService } from '../game/tick-engine.service';
 import { StorageService } from '../storage/storage.service';
 import { ChallengeService } from './challenge.service';
-import { mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-helpers';
+import { mustAt, mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-helpers';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
@@ -54,14 +54,16 @@ describe('Level 7: Two Paths:star evaluation', () => {
 
     it('earns 1 star when both downstream paths are built with no route rules', () => {
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 10, 9);
 
-        gameState.addConnection({ serviceId: rests[0].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest1.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
         gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: rests[1].id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest2.id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
         gameState.addConnection({ serviceId: mq.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
@@ -74,20 +76,22 @@ describe('Level 7: Two Paths:star evaluation', () => {
     it('earns 2 stars when origin traffic is split by method', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
         const mq = mustPlace(gameState, ServiceType.MESSAGE_QUEUE, 10, 9);
 
-        gameState.addConnection({ serviceId: rests[0].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest1.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
         gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: rests[1].id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest2.id, portIndex: 1 }, { serviceId: mq.id, portIndex: 0 });
         gameState.addConnection({ serviceId: mq.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
 
         // Filter the pre-drawn Origin→REST connections
         const originConns = gameState.connections().filter((c) => c.source.serviceId === origin.id);
-        const toRest0 = originConns.find((c) => c.target.serviceId === rests[0].id);
-        const toRest1 = originConns.find((c) => c.target.serviceId === rests[1].id);
+        const toRest0 = originConns.find((c) => c.target.serviceId === rest1.id);
+        const toRest1 = originConns.find((c) => c.target.serviceId === rest2.id);
         if (toRest0) gameState.updateConnectionFilter(toRest0.id, { methods: [RequestMethod.GET], weight: 100 });
         if (toRest1)
             gameState.updateConnectionFilter(toRest1.id, {
@@ -105,6 +109,8 @@ describe('Level 7: Two Paths:star evaluation', () => {
     it('earns 3 stars with double-ruling: origin + downstream both filtered', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         removeDirectRestToDbBypasses();
         const cache = mustPlace(gameState, ServiceType.CACHE, 10, 2);
@@ -112,7 +118,7 @@ describe('Level 7: Two Paths:star evaluation', () => {
 
         const cacheConn = mustConnect(
             gameState,
-            { serviceId: rests[0].id, portIndex: 1 },
+            { serviceId: rest1.id, portIndex: 1 },
             { serviceId: cache.id, portIndex: 0 },
         );
         gameState.updateConnectionFilter(cacheConn.id, { methods: [RequestMethod.GET], weight: 100 });
@@ -120,7 +126,7 @@ describe('Level 7: Two Paths:star evaluation', () => {
 
         const mqConn = mustConnect(
             gameState,
-            { serviceId: rests[1].id, portIndex: 1 },
+            { serviceId: rest2.id, portIndex: 1 },
             { serviceId: mq.id, portIndex: 0 },
         );
         gameState.updateConnectionFilter(mqConn.id, {
@@ -130,8 +136,8 @@ describe('Level 7: Two Paths:star evaluation', () => {
         gameState.addConnection({ serviceId: mq.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
 
         const originConns = gameState.connections().filter((c) => c.source.serviceId === origin.id);
-        const toRest0 = originConns.find((c) => c.target.serviceId === rests[0].id);
-        const toRest1 = originConns.find((c) => c.target.serviceId === rests[1].id);
+        const toRest0 = originConns.find((c) => c.target.serviceId === rest1.id);
+        const toRest1 = originConns.find((c) => c.target.serviceId === rest2.id);
         if (toRest0) gameState.updateConnectionFilter(toRest0.id, { methods: [RequestMethod.GET], weight: 100 });
         if (toRest1)
             gameState.updateConnectionFilter(toRest1.id, {

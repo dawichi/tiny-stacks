@@ -36,19 +36,27 @@ interface PaletteItem {
       @if (!collapsed()) {
         <div class="panel bg-white/70 backdrop-blur-md border border-white/40
                     rounded-xl shadow-xl p-3 w-52">
-          <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 px-1">
+          <h2 class="text-xs font-semibold text-slate-600 uppercase tracking-wider mb-2 px-1">
             Services
-          </h3>
+          </h2>
 
           <div class="flex flex-col gap-1.5">
             @for (item of paletteItems(); track item.type) {
-              <div
-                class="service-item flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150 select-none"
+              <button
+                type="button"
+                class="service-item w-full text-left flex items-center gap-2.5 px-2.5 py-2 rounded-lg transition-colors duration-150 select-none
+                       focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
                 [class.cursor-grab]="item.remaining > 0"
                 [class.cursor-not-allowed]="item.remaining <= 0"
                 [class.opacity-40]="item.remaining <= 0"
                 [class.hover:bg-white/60]="item.remaining > 0"
+                [class.ring-2]="gameState.draggingType() === item.type && gameState.keyboardPlacementActive()"
+                [class.ring-blue-500]="gameState.draggingType() === item.type && gameState.keyboardPlacementActive()"
                 [draggable]="item.remaining > 0"
+                [disabled]="item.remaining <= 0"
+                [attr.aria-pressed]="gameState.draggingType() === item.type"
+                [attr.aria-label]="itemLabel(item)"
+                (click)="onItemClick($event, item.type)"
                 (dragstart)="onDragStart($event, item.type, item.remaining)"
                 (dragend)="onDragEnd()"
               >
@@ -69,20 +77,20 @@ interface PaletteItem {
                   <span class="text-sm font-medium text-slate-700 truncate">
                     {{ getConfig(item.type).name }}
                   </span>
-                  <span class="text-[10px] text-slate-400">
+                  <span class="text-[10px] text-slate-600">
                     {{ getConfig(item.type).gridWidth }}&times;{{ getConfig(item.type).gridHeight }}
                   </span>
                 </div>
 
                 @if (item.remaining !== Infinity) {
                   <span class="text-[10px] font-semibold shrink-0"
-                    [class.text-slate-400]="item.remaining > 0"
+                    [class.text-slate-600]="item.remaining > 0"
                     [class.text-red-400]="item.remaining <= 0"
                   >
                     {{ item.remaining }} left
                   </span>
                 }
-              </div>
+              </button>
             }
           </div>
         </div>
@@ -114,7 +122,7 @@ interface PaletteItem {
 })
 export class ServicePaletteComponent {
     // ── Injected Services ──────────────────────────────────────────────
-    private readonly gameState = inject(GameStateService);
+    protected readonly gameState = inject(GameStateService);
 
     // ── Inputs ────────────────────────────────────────────────────────
     /** Challenge resource limits. null = sandbox mode (all types, unlimited). */
@@ -162,12 +170,24 @@ export class ServicePaletteComponent {
         return this.icons[iconName] || Globe;
     }
 
+    protected itemLabel(item: PaletteItem): string {
+        const name = getServiceConfig(item.type).name;
+        const available = item.remaining === Infinity ? 'unlimited available' : `${item.remaining} remaining`;
+        return `Choose ${name} for placement, ${available}`;
+    }
+
+    protected onItemClick(event: MouseEvent, type: ServiceType): void {
+        this.gameState.draggingType.set(type);
+        this.gameState.keyboardPlacementActive.set(event.detail === 0);
+    }
+
     protected onDragStart(event: DragEvent, type: ServiceType, remaining: number): void {
         if (remaining <= 0) {
             event.preventDefault();
             return;
         }
         this.gameState.draggingType.set(type);
+        this.gameState.keyboardPlacementActive.set(false);
         event.dataTransfer?.setData('application/service-type', type);
         if (event.dataTransfer) {
             event.dataTransfer.effectAllowed = 'copy';
@@ -176,5 +196,6 @@ export class ServicePaletteComponent {
 
     protected onDragEnd(): void {
         this.gameState.draggingType.set(null);
+        this.gameState.keyboardPlacementActive.set(false);
     }
 }

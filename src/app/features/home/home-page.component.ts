@@ -8,7 +8,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
     standalone: true,
     imports: [RouterLink, LucideAngularModule],
     template: `
-    <div class="page">
+    <main class="page" aria-label="tiny-stacks home">
       <div class="dot-grid"></div>
 
       <svg class="background-network" viewBox="0 0 1200 800" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
@@ -96,7 +96,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
             <img src="logo.svg" width="56" height="56" alt="tiny-stacks logo">
           </div>
           <h1 class="text-5xl font-bold text-slate-800 tracking-tight mb-3">tiny-stacks</h1>
-          <p class="text-lg text-slate-500 leading-relaxed">
+          <p class="text-lg text-slate-600 leading-relaxed">
             Place services. Connect them. Watch the traffic flow.
           </p>
         </header>
@@ -109,11 +109,11 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
             <lucide-icon [img]="BookOpenIcon" [size]="32" />
           </div>
           <h2 class="text-xl font-semibold text-slate-800 mt-4">Learn the basics</h2>
-          <p class="text-sm text-slate-500 mt-2 text-center leading-relaxed">
+          <p class="text-sm text-slate-600 mt-2 text-center leading-relaxed">
             A short, interactive introduction to building and routing a service stack.
           </p>
           @if (tutorial.isTutorialComplete()) {
-            <span class="mt-3 text-xs font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+            <span class="mt-3 text-xs font-semibold text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded-full">
               Completed
             </span>
           } @else {
@@ -129,7 +129,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
             <lucide-icon [img]="HammerIcon" [size]="32" />
           </div>
           <h2 class="text-xl font-semibold text-slate-800 mt-4">Sandbox</h2>
-          <p class="text-sm text-slate-500 mt-2 text-center leading-relaxed">
+          <p class="text-sm text-slate-600 mt-2 text-center leading-relaxed">
             Build freely. No limits, no goals. Just pure architecture.
           </p>
         </a>
@@ -140,7 +140,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
             <lucide-icon [img]="TrophyIcon" [size]="32" />
           </div>
           <h2 class="text-xl font-semibold text-slate-800 mt-4">Challenges</h2>
-          <p class="text-sm text-slate-500 mt-2 text-center leading-relaxed">
+          <p class="text-sm text-slate-600 mt-2 text-center leading-relaxed">
             Progressive puzzles. Solve real DevOps problems. Earn stars.
           </p>
         </a>
@@ -157,7 +157,7 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
         <lucide-icon [img]="GithubIcon" [size]="16" />
         <span>Source code</span>
       </a>
-    </div>
+    </main>
   `,
     styles: [
         `

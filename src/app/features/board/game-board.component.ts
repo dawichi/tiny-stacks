@@ -1,4 +1,4 @@
-import { Component, computed, HostListener, inject, input, signal } from '@angular/core';
+import { Component, computed, ElementRef, HostListener, inject, input, signal } from '@angular/core';
 import { GameStateService, isServiceType, type PortRef } from '../../core/game/game-state.service';
 import { evaluateBezier, getConnectionBezier } from '../../core/game/port-utils';
 import { getServiceConfig, ServiceType } from '../../core/game/service-types.config';
@@ -35,6 +35,7 @@ export class GameBoardComponent {
     // ── Injected Services ──────────────────────────────────────────────
     protected readonly gameState = inject(GameStateService);
     protected readonly simulation = inject(TickEngineService);
+    private readonly hostElement = inject<ElementRef<HTMLElement>>(ElementRef);
 
     // ── Inputs ─────────────────────────────────────────────────────────
     /** Placement limits (challenges, tutorial). null = unlimited (sandbox). */
@@ -42,6 +43,12 @@ export class GameBoardComponent {
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly hoverPosition = signal<HoverPosition | null>(null);
+    private readonly keyboardPlacementPosition = signal<HoverPosition>({ gridX: 0, gridY: 0 });
+    protected readonly keyboardAnnouncement = signal('');
+    private readonly previewPosition = computed(() => {
+        if (this.gameState.keyboardPlacementActive()) return this.keyboardPlacementPosition();
+        return this.hoverPosition();
+    });
 
     // Connection drag state
     protected readonly connectionDragSource = signal<PortRef | null>(null);
@@ -52,6 +59,10 @@ export class GameBoardComponent {
     protected readonly moveDragServiceId = signal<string | null>(null);
 
     protected readonly cellSize = computed(() => this.gameState.gridConfig().cellSize);
+
+    focusBoard(): void {
+        this.hostElement.nativeElement.querySelector<HTMLElement>('.game-board')?.focus();
+    }
 
     protected readonly boardWidth = computed(() => {
         const config = this.gameState.gridConfig();
@@ -85,12 +96,12 @@ export class GameBoardComponent {
     });
 
     protected readonly previewVisible = computed(() => {
-        return this.previewServiceType() !== null && this.hoverPosition() !== null;
+        return this.previewServiceType() !== null && this.previewPosition() !== null;
     });
 
     protected readonly previewValid = computed(() => {
         const type = this.previewServiceType();
-        const pos = this.hoverPosition();
+        const pos = this.previewPosition();
         if (!type || !pos) return false;
 
         const moveId = this.moveDragServiceId();
@@ -101,12 +112,12 @@ export class GameBoardComponent {
     });
 
     protected readonly previewLeft = computed(() => {
-        const pos = this.hoverPosition();
+        const pos = this.previewPosition();
         return pos ? pos.gridX * this.cellSize() : 0;
     });
 
     protected readonly previewTop = computed(() => {
-        const pos = this.hoverPosition();
+        const pos = this.previewPosition();
         return pos ? pos.gridY * this.cellSize() : 0;
     });
 
@@ -181,6 +192,8 @@ export class GameBoardComponent {
         // Keys typed into form controls belong to them (sliders, toggles, future text fields)
         if (isEditableTarget(event.target)) return;
 
+        if (this.gameState.keyboardPlacementActive() && this.handleKeyboardPlacementKey(event)) return;
+
         const mod = event.metaKey || event.ctrlKey;
         const key = event.key.toLowerCase();
 
@@ -197,18 +210,22 @@ export class GameBoardComponent {
         }
 
         if (event.key !== 'Delete' && event.key !== 'Backspace') return;
+        if (isInteractiveControlOutsideBoard(event.target)) return;
 
         const selectedConn = this.gameState.selectedConnectionId();
         if (selectedConn) {
             event.preventDefault();
             this.gameState.removeConnection(selectedConn);
+            this.keyboardAnnouncement.set('Connection removed.');
             return;
         }
 
         const selectedService = this.gameState.selectedServiceId();
         if (selectedService && !this.gameState.isLocked(selectedService)) {
+            const service = this.gameState.services().find((item) => item.id === selectedService);
             event.preventDefault();
             this.gameState.removeService(selectedService);
+            if (service) this.keyboardAnnouncement.set(`${getServiceConfig(service.type).name} removed.`);
         }
     }
 
@@ -216,6 +233,61 @@ export class GameBoardComponent {
     protected onServiceClick(id: string): void {
         this.gameState.selectedConnectionId.set(null);
         this.gameState.selectService(id);
+    }
+
+    protected onServiceKeyboardSelect(event: { serviceId: string }): void {
+        this.onServiceClick(event.serviceId);
+        const service = this.gameState.services().find((item) => item.id === event.serviceId);
+        if (service) this.keyboardAnnouncement.set(`${getServiceConfig(service.type).name} selected.`);
+    }
+
+    protected onServiceKeyboardMove(event: { serviceId: string; deltaX: number; deltaY: number }): void {
+        const service = this.gameState.services().find((item) => item.id === event.serviceId);
+        if (!service) return;
+        this.gameState.selectedConnectionId.set(null);
+        this.gameState.selectService(event.serviceId);
+        const moved = this.gameState.moveService(
+            event.serviceId,
+            service.gridX + event.deltaX,
+            service.gridY + event.deltaY,
+        );
+        const config = getServiceConfig(service.type);
+        this.keyboardAnnouncement.set(
+            moved
+                ? `${config.name} moved to column ${service.gridX + event.deltaX + 1}, row ${service.gridY + event.deltaY + 1}.`
+                : `${config.name} cannot move to that cell.`,
+        );
+    }
+
+    protected onPortActivate(event: PortRef): void {
+        const source = this.connectionDragSource();
+        if (!source) {
+            this.connectionDragSource.set(event);
+            const service = this.gameState.services().find((item) => item.id === event.serviceId);
+            const port = service ? getServiceConfig(service.type).ports[event.portIndex] : undefined;
+            this.keyboardAnnouncement.set(
+                service && port
+                    ? `Connection start selected: ${getServiceConfig(service.type).name} ${port.direction} port. Choose a destination port.`
+                    : 'Connection start selected. Choose a destination port.',
+            );
+            return;
+        }
+
+        if (source.serviceId === event.serviceId && source.portIndex === event.portIndex) {
+            this.connectionDragSource.set(null);
+            this.keyboardAnnouncement.set('Connection cancelled.');
+            return;
+        }
+
+        const connection = this.gameState.addConnection(source, event);
+        if (connection) {
+            this.onConnectionClick(connection.id);
+            this.keyboardAnnouncement.set('Connection created and selected. Press Delete to remove it.');
+            this.connectionDragSource.set(null);
+            return;
+        }
+
+        this.keyboardAnnouncement.set('Those ports cannot connect. Choose a compatible destination port.');
     }
 
     protected onConnectionClick(connectionId: string): void {
@@ -232,6 +304,28 @@ export class GameBoardComponent {
         const gridPos = this.eventToGrid(event);
         if (gridPos) {
             this.hoverPosition.set(gridPos);
+        }
+    }
+
+    protected onBoardClick(event: MouseEvent): void {
+        if (event.target !== event.currentTarget || this.gameState.keyboardPlacementActive()) return;
+        const type = this.gameState.draggingType();
+        if (!type) return;
+
+        const board = event.currentTarget as HTMLElement;
+        const position = this.clientToGrid(event.clientX, event.clientY, board.getBoundingClientRect());
+        if (!position) return;
+        if (!this.hasRemaining(type)) {
+            this.keyboardAnnouncement.set(`No ${getServiceConfig(type).name} services remain for this challenge.`);
+            return;
+        }
+
+        const placed = this.gameState.addService(type, position.gridX, position.gridY);
+        if (placed) {
+            this.gameState.draggingType.set(null);
+            this.keyboardAnnouncement.set(
+                `${getServiceConfig(type).name} placed at column ${position.gridX + 1}, row ${position.gridY + 1}.`,
+            );
         }
     }
 
@@ -256,10 +350,12 @@ export class GameBoardComponent {
 
         this.hoverPosition.set(null);
         this.gameState.draggingType.set(null);
+        this.gameState.keyboardPlacementActive.set(false);
     }
 
     // ── Connection drag ────────────────────────────────────────────────
     protected onPortDragStart(event: { serviceId: string; portIndex: number }): void {
+        this.gameState.keyboardPlacementActive.set(false);
         this.connectionDragSource.set(event);
     }
 
@@ -342,6 +438,67 @@ export class GameBoardComponent {
         return this.gameState.placedByPlayer(type) < limit;
     }
 
+    private handleKeyboardPlacementKey(event: KeyboardEvent): boolean {
+        const type = this.gameState.draggingType();
+        if (!type) {
+            this.gameState.keyboardPlacementActive.set(false);
+            return false;
+        }
+
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.gameState.draggingType.set(null);
+            this.gameState.keyboardPlacementActive.set(false);
+            this.keyboardAnnouncement.set('Placement cancelled.');
+            return true;
+        }
+
+        const movement: Record<string, HoverPosition> = {
+            ArrowLeft: { gridX: -1, gridY: 0 },
+            ArrowRight: { gridX: 1, gridY: 0 },
+            ArrowUp: { gridX: 0, gridY: -1 },
+            ArrowDown: { gridX: 0, gridY: 1 },
+        };
+        const delta = movement[event.key];
+        if (delta) {
+            event.preventDefault();
+            const grid = this.gameState.gridConfig();
+            const current = this.keyboardPlacementPosition();
+            const next = {
+                gridX: Math.max(0, Math.min(grid.width - 1, current.gridX + delta.gridX)),
+                gridY: Math.max(0, Math.min(grid.height - 1, current.gridY + delta.gridY)),
+            };
+            this.keyboardPlacementPosition.set(next);
+            this.keyboardAnnouncement.set(`Placement cursor at column ${next.gridX + 1}, row ${next.gridY + 1}.`);
+            return true;
+        }
+
+        if (event.key !== 'Enter' && event.key !== ' ') return false;
+        event.preventDefault();
+        const position = this.keyboardPlacementPosition();
+        if (!this.hasRemaining(type)) {
+            this.keyboardAnnouncement.set(`No ${getServiceConfig(type).name} services remain for this challenge.`);
+            return true;
+        }
+        if (!this.previewValid()) {
+            this.keyboardAnnouncement.set(
+                'That service cannot be placed there. Use arrow keys to choose another cell.',
+            );
+            return true;
+        }
+
+        const placed = this.gameState.addService(type, position.gridX, position.gridY);
+        if (placed) {
+            this.keyboardAnnouncement.set(
+                `${getServiceConfig(type).name} placed at column ${position.gridX + 1}, row ${position.gridY + 1}.`,
+            );
+            this.gameState.draggingType.set(null);
+            this.gameState.keyboardPlacementActive.set(false);
+            this.keyboardPlacementPosition.set({ gridX: 0, gridY: 0 });
+        }
+        return true;
+    }
+
     // ── Private helpers ────────────────────────────────────────────────
     private eventToGrid(event: DragEvent): HoverPosition | null {
         const target = event.currentTarget as HTMLElement;
@@ -376,5 +533,13 @@ function isEditableTarget(target: EventTarget | null): boolean {
         target instanceof HTMLTextAreaElement ||
         target instanceof HTMLSelectElement ||
         target.isContentEditable
+    );
+}
+
+function isInteractiveControlOutsideBoard(target: EventTarget | null): boolean {
+    if (!(target instanceof HTMLElement)) return false;
+    return Boolean(
+        target.closest('button, a[href], input, select, textarea, [role="button"], [contenteditable="true"]') &&
+            !target.closest('.game-board'),
     );
 }

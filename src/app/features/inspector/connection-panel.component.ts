@@ -19,8 +19,10 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
         <div class="flex items-center justify-between mb-3">
           <h3 class="text-sm font-semibold text-slate-800">Connection</h3>
           <button
+            type="button"
             class="w-6 h-6 flex items-center justify-center rounded-md
-                   hover:bg-slate-200/60 transition-colors text-slate-400 hover:text-slate-600"
+                   hover:bg-slate-200/60 transition-colors text-slate-600 hover:text-slate-600"
+            aria-label="Close connection details"
             (click)="onClose()"
           >
             <lucide-icon [img]="XIcon" [size]="14" />
@@ -30,21 +32,22 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
         <!-- Source → Target -->
         <div class="flex items-center gap-2 text-xs text-slate-600 mb-4">
           <span class="font-medium">{{ connSourceName() }}</span>
-          <span class="text-slate-400">&rarr;</span>
+          <span class="text-slate-600">&rarr;</span>
           <span class="font-medium">{{ connTargetName() }}</span>
         </div>
 
         <!-- Method filter -->
         <div class="mb-4">
-          <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Route Rule</h4>
+          <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-2">Route Rule</h4>
           <div class="flex gap-1.5">
             @for (m of allMethods; track m) {
               <button
                 class="method-toggle flex-1 text-[10px] font-semibold py-1 rounded-md transition-all"
                 [class.active]="isMethodActive(m)"
                 [style.background-color]="isMethodActive(m) ? methodColor(m) : 'transparent'"
-                [style.color]="isMethodActive(m) ? 'white' : methodColor(m)"
+                [style.color]="'#0f172a'"
                 [style.border]="'1px solid ' + methodColor(m)"
+                [attr.aria-pressed]="isMethodActive(m)"
                 [disabled]="!gameState.editable()"
                 (click)="onToggleMethod(m)"
               >
@@ -57,10 +60,11 @@ import { REQUEST_METHOD_COLORS, RequestMethod } from '../../core/game/sim-types'
         <!-- Weight slider -->
         <div class="mb-4">
           <div class="flex items-center justify-between mb-1.5">
-            <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Weight</h4>
+            <label for="connection-weight" class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider">Weight</label>
             <span class="text-xs font-semibold text-slate-700">{{ connWeight() }}</span>
           </div>
           <input
+            id="connection-weight"
             type="range"
             min="1"
             max="100"

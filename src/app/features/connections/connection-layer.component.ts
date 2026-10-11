@@ -1,6 +1,7 @@
 import { Component, computed, input, output } from '@angular/core';
 import type { Connection, PlacedService, PortRef } from '../../core/game/game-state.service';
 import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '../../core/game/port-utils';
+import { getServiceConfig } from '../../core/game/service-types.config';
 
 @Component({
     selector: 'app-connection-layer',
@@ -18,11 +19,16 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
           [attr.d]="conn.path"
           class="connection-path pointer-events-auto cursor-pointer"
           [class.selected]="conn.id === selectedConnectionId()"
+          [attr.tabindex]="conn.path ? 0 : -1"
+          [attr.aria-label]="conn.label"
+          [attr.aria-pressed]="conn.id === selectedConnectionId()"
+          role="button"
           fill="none"
           [attr.stroke]="conn.id === selectedConnectionId() ? '#3b82f6' : '#94a3b8'"
           [attr.stroke-width]="conn.id === selectedConnectionId() ? 4 : 3"
           stroke-linecap="round"
           (click)="onConnectionClick($event, conn.id)"
+          (keydown)="onConnectionKeyDown($event, conn.id)"
         />
       }
 
@@ -78,6 +84,11 @@ import { computeBezierPath, computePreviewPath, getPortAbsolutePosition } from '
     .connection-path.selected {
       filter: drop-shadow(0 0 4px rgba(59, 130, 246, 0.4));
     }
+    .connection-path:focus-visible {
+      stroke: #1d4ed8;
+      stroke-width: 5;
+      filter: drop-shadow(0 0 4px rgba(29, 78, 216, 0.55));
+    }
     .packet {
       filter: drop-shadow(0 0 4px var(--packet-color, rgba(255, 255, 255, 0.6)));
     }
@@ -109,13 +120,17 @@ export class ConnectionLayerComponent {
             const tgtService = services.find((s) => s.id === conn.target.serviceId);
 
             if (!srcService || !tgtService) {
-                return { id: conn.id, path: '' };
+                return { id: conn.id, path: '', label: 'Unavailable connection' };
             }
 
             const from = getPortAbsolutePosition(srcService, conn.source.portIndex, cellSize);
             const to = getPortAbsolutePosition(tgtService, conn.target.portIndex, cellSize);
 
-            return { id: conn.id, path: computeBezierPath(from, to) };
+            return {
+                id: conn.id,
+                path: computeBezierPath(from, to),
+                label: `Connection from ${getServiceConfig(srcService.type).name} to ${getServiceConfig(tgtService.type).name}`,
+            };
         });
     });
 
@@ -134,6 +149,13 @@ export class ConnectionLayerComponent {
 
     // ── Methods ────────────────────────────────────────────────────────
     protected onConnectionClick(event: MouseEvent, connectionId: string): void {
+        event.stopPropagation();
+        this.connectionClick.emit(connectionId);
+    }
+
+    protected onConnectionKeyDown(event: KeyboardEvent, connectionId: string): void {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+        event.preventDefault();
         event.stopPropagation();
         this.connectionClick.emit(connectionId);
     }

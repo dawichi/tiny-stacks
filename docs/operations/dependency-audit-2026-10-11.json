@@ -1,0 +1,653 @@
+{
+  "audited_at": "2026-10-11T16:57:15Z",
+  "tool": "bun audit 1.3.4",
+  "lockfile": "bun.lock",
+  "summary": {
+    "critical": 0,
+    "high": 28,
+    "moderate": 46,
+    "low": 6
+  },
+  "findings": [
+    {
+      "package": "@babel/core",
+      "id": "GHSA-4x5r-pxfx-6jf8",
+      "title": "@babel/core: Arbitrary File Read via sourceMappingURL Comment",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-4x5r-pxfx-6jf8",
+      "vulnerable_versions": "<=7.29.0"
+    },
+    {
+      "package": "@hono/node-server",
+      "id": "GHSA-wc8c-qw6v-h7f6",
+      "title": "@hono/node-server has authorization bypass for protected static paths via encoded slashes in Serve Static Middleware",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-wc8c-qw6v-h7f6",
+      "vulnerable_versions": "<1.19.10"
+    },
+    {
+      "package": "@hono/node-server",
+      "id": "GHSA-92pp-h63x-v22m",
+      "title": "@hono/node-server: Middleware bypass via repeated slashes in serveStatic",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-92pp-h63x-v22m",
+      "vulnerable_versions": "<1.19.13"
+    },
+    {
+      "package": "@hono/node-server",
+      "id": "GHSA-frvp-7c67-39w9",
+      "title": "Node.js Adapter for Hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-frvp-7c67-39w9",
+      "vulnerable_versions": "<1.19.15"
+    },
+    {
+      "package": "@sigstore/core",
+      "id": "GHSA-jfc7-64v2-mr8c",
+      "title": "@sigstore/core has DSSE payloadType type-binding failure",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-jfc7-64v2-mr8c",
+      "vulnerable_versions": "<=3.2.0"
+    },
+    {
+      "package": "@sigstore/verify",
+      "id": "GHSA-xgjw-pm74-86q4",
+      "title": "sigstore-js has Insufficient Verification of Data Authenticity",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-xgjw-pm74-86q4",
+      "vulnerable_versions": "=3.1.0"
+    },
+    {
+      "package": "ajv",
+      "id": "GHSA-2g4f-4pwh-qvx6",
+      "title": "ajv has ReDoS when using `$data` option",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-2g4f-4pwh-qvx6",
+      "vulnerable_versions": ">=7.0.0-alpha.0 <8.18.0"
+    },
+    {
+      "package": "baseline-browser-mapping",
+      "id": "GHSA-w5vr-8v7q-w6rv",
+      "title": "baseline-browser-mapping process termination on invalid input causes denial of service",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-w5vr-8v7q-w6rv",
+      "vulnerable_versions": ">=2.0.0 <2.11.0"
+    },
+    {
+      "package": "body-parser",
+      "id": "GHSA-v422-hmwv-36x6",
+      "title": "body-parser vulnerable to denial of service when invalid limit value silently disables size enforcement",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-v422-hmwv-36x6",
+      "vulnerable_versions": ">=2.0.0 <2.3.0"
+    },
+    {
+      "package": "browserslist",
+      "id": "GHSA-c83g-rgw3-j3cx",
+      "title": "Browserslist: Unbounded memory growth (no cache eviction) via distinct query results, leading to eventual OOM",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-c83g-rgw3-j3cx",
+      "vulnerable_versions": "<=4.28.6"
+    },
+    {
+      "package": "browserslist",
+      "id": "GHSA-73wf-gq98-2v4g",
+      "title": "Browserslist: Uncaught crash / prototype write via untrusted browserslist-stats.json custom stats (normalizeStats)",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-73wf-gq98-2v4g",
+      "vulnerable_versions": "<=4.28.6"
+    },
+    {
+      "package": "express-rate-limit",
+      "id": "GHSA-46wh-pxpv-q5gq",
+      "title": "express-rate-limit: IPv4-mapped IPv6 addresses bypass per-client rate limiting on servers with dual-stack network",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-46wh-pxpv-q5gq",
+      "vulnerable_versions": ">=8.2.0 <8.2.2"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-f65p-4m7j-42xc",
+      "title": "fast-uri vulnerable to server-side request forgery via malformed IPv6 normalization",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-f65p-4m7j-42xc",
+      "vulnerable_versions": ">=3.0.0 <3.1.6"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-jqff-g426-hqxp",
+      "title": "fast-uri vulnerable to host confusion via percent-encoded scheme normalization",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-jqff-g426-hqxp",
+      "vulnerable_versions": ">=3.0.0 <3.1.6"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-7p8r-x3mc-p8w7",
+      "title": "fast-uri vulnerable to host confusion via backslash authority introducer",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-7p8r-x3mc-p8w7",
+      "vulnerable_versions": ">=3.0.0 <3.1.5"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-v2hh-gcrm-f6hx",
+      "title": "fast-uri vulnerable to host confusion via literal backslash authority delimiter",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-v2hh-gcrm-f6hx",
+      "vulnerable_versions": ">=3.0.0 <=3.1.3"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-4c8g-83qw-93j6",
+      "title": "fast-uri vulnerable to host confusion via failed IDN canonicalization",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-4c8g-83qw-93j6",
+      "vulnerable_versions": ">=3.0.0 <3.1.3"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-q3j6-qgpj-74h6",
+      "title": "fast-uri vulnerable to path traversal via percent-encoded dot segments",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-q3j6-qgpj-74h6",
+      "vulnerable_versions": ">=3.0.0 <=3.1.0"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-v39h-62p7-jpjc",
+      "title": "fast-uri vulnerable to host confusion via percent-encoded authority delimiters",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-v39h-62p7-jpjc",
+      "vulnerable_versions": ">=3.0.0 <=3.1.1"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-qw65-cvwx-89v3",
+      "title": "fast-uri vulnerable to authority injection via an unvalidated port in serialize",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-qw65-cvwx-89v3",
+      "vulnerable_versions": ">=3.0.0 <3.1.7"
+    },
+    {
+      "package": "fast-uri",
+      "id": "GHSA-hrr3-gc8f-f4qj",
+      "title": "fast-uri vulnerable to inconsistent host case normalization via percent-encoded octets",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-hrr3-gc8f-f4qj",
+      "vulnerable_versions": ">=3.0.0 <3.1.8"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-qp7p-654g-cw7p",
+      "title": "Hono has CSS Declaration Injection via Style Object Values in JSX SSR",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-qp7p-654g-cw7p",
+      "vulnerable_versions": "<4.12.18"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-hm8q-7f3q-5f36",
+      "title": "Hono has improper validation of NumericDate claims (exp, nbf, iat) in JWT verify()",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-hm8q-7f3q-5f36",
+      "vulnerable_versions": "<4.12.18"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-p77w-8qqv-26rm",
+      "title": "Hono's Cache Middleware ignores Vary: Authorization / Vary: Cookie leading to cross-user cache leakage",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-p77w-8qqv-26rm",
+      "vulnerable_versions": "<4.12.18"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-9vqf-7f2p-gf9v",
+      "title": "Hono: bodyLimit() can be bypassed for chunked / unknown-length requests",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-9vqf-7f2p-gf9v",
+      "vulnerable_versions": "<4.12.16"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-69xw-7hcm-h432",
+      "title": "hono/jsx has Unvalidated JSX Tag Names that May Allow HTML Injection",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-69xw-7hcm-h432",
+      "vulnerable_versions": "<4.12.16"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-gq3j-xvxp-8hrf",
+      "title": "Hono added timing comparison hardening in basicAuth and bearerAuth",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-gq3j-xvxp-8hrf",
+      "vulnerable_versions": "<4.11.10"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-xrhx-7g5j-rcj5",
+      "title": "Hono: IP Restriction bypasses static deny rules for non-canonical IPv6 ",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-xrhx-7g5j-rcj5",
+      "vulnerable_versions": "<4.12.21"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-3hrh-pfw6-9m5x",
+      "title": "Hono: Cookie helper does not sanitize sameSite and priority, allowing Set-Cookie injection",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-3hrh-pfw6-9m5x",
+      "vulnerable_versions": "<4.12.21"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-f577-qrjj-4474",
+      "title": "Hono: JWT middleware accepts any Authorization scheme, not only Bearer",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-f577-qrjj-4474",
+      "vulnerable_versions": "<4.12.21"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-2gcr-mfcq-wcc3",
+      "title": "Hono: app.mount() strips mount prefix using undecoded path, causing incorrect routing for percent-encoded paths",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-2gcr-mfcq-wcc3",
+      "vulnerable_versions": "<4.12.21"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-5pq2-9x2x-5p6w",
+      "title": "Hono Vulnerable to Cookie Attribute Injection via Unsanitized domain and path in setCookie()",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-5pq2-9x2x-5p6w",
+      "vulnerable_versions": "<4.12.4"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-p6xx-57qc-3wxr",
+      "title": "Hono Vulnerable to SSE Control Field Injection via CR/LF in writeSSE()",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-p6xx-57qc-3wxr",
+      "vulnerable_versions": "<4.12.4"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-q5qw-h33p-qvwr",
+      "title": "Hono vulnerable to arbitrary file access via serveStatic vulnerability ",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-q5qw-h33p-qvwr",
+      "vulnerable_versions": "<4.12.4"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-8j4g-w8fx-2239",
+      "title": "Hono: ReDoS in CORS middleware via Access-Control-Request-Headers",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-8j4g-w8fx-2239",
+      "vulnerable_versions": "<4.12.34"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-458j-xx4x-4375",
+      "title": "hono Improperly Handles JSX Attribute Names Allows HTML Injection in hono/jsx SSR",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-458j-xx4x-4375",
+      "vulnerable_versions": "<4.12.14"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-r5rp-j6wh-rvv4",
+      "title": "Hono: Non-breaking space prefix bypass in cookie name handling in getCookie()",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-r5rp-j6wh-rvv4",
+      "vulnerable_versions": "<4.12.12"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-xf4j-xp2r-rqqx",
+      "title": "Hono: Path traversal in toSSG() allows writing files outside the output directory",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-xf4j-xp2r-rqqx",
+      "vulnerable_versions": ">=4.0.0 <=4.12.11"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-wmmm-f939-6g9c",
+      "title": "Hono: Middleware bypass via repeated slashes in serveStatic",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-wmmm-f939-6g9c",
+      "vulnerable_versions": "<4.12.12"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-xpcf-pg52-r92g",
+      "title": "Hono has incorrect IP matching in ipRestriction() for IPv4-mapped IPv6 addresses",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-xpcf-pg52-r92g",
+      "vulnerable_versions": "<4.12.12"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-rv63-4mwf-qqc2",
+      "title": "hono: Body Limit Middleware can be bypassed on AWS Lambda by understating `Content-Length`",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-rv63-4mwf-qqc2",
+      "vulnerable_versions": "<4.12.25"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-wgpf-jwqj-8h8p",
+      "title": "hono: Lambda@Edge adapter keeps only the last value of a repeated request header, dropping the rest",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-wgpf-jwqj-8h8p",
+      "vulnerable_versions": "<4.12.25"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-88fw-hqm2-52qc",
+      "title": "hono: CORS Middleware reflects any Origin with credentials when `origin` defaults to the wildcard",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-88fw-hqm2-52qc",
+      "vulnerable_versions": "<4.12.25"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-wwfh-h76j-fc44",
+      "title": "hono: Path traversal in `serve-static` on Windows via encoded backslash (`%5C`)",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-wwfh-h76j-fc44",
+      "vulnerable_versions": "<4.12.25"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-j6c9-x7qj-28xf",
+      "title": "hono: AWS Lambda adapter merges multiple `Set-Cookie` headers into one value, dropping cookies on ALB single-header and Lattice",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-j6c9-x7qj-28xf",
+      "vulnerable_versions": "<4.12.25"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-xgm2-5f3f-mvvc",
+      "title": "Hono: API Gateway v1 adapter can drop a distinct repeated request header value during de-duplication",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-xgm2-5f3f-mvvc",
+      "vulnerable_versions": ">=4.3.3 <4.12.27"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-hvrm-45r6-mjfj",
+      "title": "hono/jsx does not isolate context per request, leading to cross-request data disclosure",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-hvrm-45r6-mjfj",
+      "vulnerable_versions": ">=4.11.8 <4.12.27"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-w62v-xxxg-mg59",
+      "title": "Hono: Server-Side XSS via JSX Escaping Bypass in cx() Utility",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-w62v-xxxg-mg59",
+      "vulnerable_versions": ">=4.0.0 <4.12.27"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-v8w9-8mx6-g223",
+      "title": "Hono vulnerable to Prototype Pollution possible through __proto__ key allowed in parseBody({ dot: true })",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-v8w9-8mx6-g223",
+      "vulnerable_versions": "<4.12.7"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-f23p-vx2j-j53r",
+      "title": "Hono: `memo()` retains SSR output across requests, leading to cross-user data disclosure",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-f23p-vx2j-j53r",
+      "vulnerable_versions": ">=3.8.0 <4.12.34"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-79qm-7rj5-m7r9",
+      "title": "Hono: Proxy Helper does not remove response headers listed in the `Connection` header",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-79qm-7rj5-m7r9",
+      "vulnerable_versions": ">=4.7.0 <4.12.34"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-gqvv-2mrq-wpjv",
+      "title": "Hono: Incomplete fix for CVE-2026-39408: `toSSG()` still writes files outside the output directory",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-gqvv-2mrq-wpjv",
+      "vulnerable_versions": "<4.13.5"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-g6gw-c38x-mqfc",
+      "title": "Hono: Unbounded dot-notation nesting in `parseBody()` can cause memory exhaustion",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-g6gw-c38x-mqfc",
+      "vulnerable_versions": "<4.13.5"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-crvj-82cr-hjcx",
+      "title": "Hono: Query parser reads parameters after the URL fragment, causing cache-key and proxy interpretation differentials",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-crvj-82cr-hjcx",
+      "vulnerable_versions": "<4.13.5"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-26pp-8wgv-hjvm",
+      "title": "Hono missing validation of cookie name on write path in setCookie()",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-26pp-8wgv-hjvm",
+      "vulnerable_versions": "<4.12.12"
+    },
+    {
+      "package": "hono",
+      "id": "GHSA-hxh3-vqpv-xpqv",
+      "title": "hono/jsx renders plain strings unescaped in boundary components, leading to XSS",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-hxh3-vqpv-xpqv",
+      "vulnerable_versions": "<4.13.7"
+    },
+    {
+      "package": "http-cache-semantics",
+      "id": "GHSA-ch52-4w7c-c8xp",
+      "title": "http-cache-semantics max-stale handling can disclose cross-user cached responses",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-ch52-4w7c-c8xp",
+      "vulnerable_versions": "<=4.2.0"
+    },
+    {
+      "package": "immutable",
+      "id": "GHSA-wf6x-7x77-mvgw",
+      "title": "Immutable is vulnerable to Prototype Pollution",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-wf6x-7x77-mvgw",
+      "vulnerable_versions": ">=5.0.0 <5.1.5"
+    },
+    {
+      "package": "immutable",
+      "id": "GHSA-v56q-mh7h-f735",
+      "title": "Immutable.js `List` 32-bit trie overflow \u2192 unrecoverable DoS",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-v56q-mh7h-f735",
+      "vulnerable_versions": ">=5.0.0-beta.1 <5.1.8"
+    },
+    {
+      "package": "immutable",
+      "id": "GHSA-xvcm-6775-5m9r",
+      "title": "Immutable: Hash-collision algorithmic complexity denial of service in Immutable.Map/Set",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-xvcm-6775-5m9r",
+      "vulnerable_versions": ">=5.0.0-beta.1 <5.1.8"
+    },
+    {
+      "package": "ip-address",
+      "id": "GHSA-v2v4-37r5-5v8g",
+      "title": "ip-address has XSS in Address6 HTML-emitting methods",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-v2v4-37r5-5v8g",
+      "vulnerable_versions": "<=10.1.0"
+    },
+    {
+      "package": "ip-address",
+      "id": "GHSA-mwp4-54f8-5fhr",
+      "title": "ip-address: Address4 decodes leading-zero octets as decimal while resolvers decode them as octal, allowing SSRF and trust-boundary bypass",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-mwp4-54f8-5fhr",
+      "vulnerable_versions": "<=10.3.0"
+    },
+    {
+      "package": "ip-address",
+      "id": "GHSA-rpw4-54j3-4h4q",
+      "title": "ip-address: Address6.isLinkLocal() recognizes fe80::/64 rather than fe80::/10, allowing SSRF and trust-boundary bypass to on-link hosts",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-rpw4-54j3-4h4q",
+      "vulnerable_versions": "<=10.5.0"
+    },
+    {
+      "package": "ip-address",
+      "id": "GHSA-j6r3-76f7-8jcv",
+      "title": "ip-address: isInSubnet() and isHostInSubnet() compare addresses of different families as if they shared an address space, allowing an allowlist check to admit an address outside its range",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-j6r3-76f7-8jcv",
+      "vulnerable_versions": "<=10.7.0"
+    },
+    {
+      "package": "ip-address",
+      "id": "GHSA-h3mg-xc3c-68pw",
+      "title": "ip-address: Address6 builds a parse diagnostic proportional to the input with no length bound, allowing a single long string to stall or crash the process",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-h3mg-xc3c-68pw",
+      "vulnerable_versions": "<=10.7.0"
+    },
+    {
+      "package": "minimatch",
+      "id": "GHSA-3ppc-4f35-3m26",
+      "title": "minimatch has a ReDoS via repeated wildcards with non-matching literal in pattern",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-3ppc-4f35-3m26",
+      "vulnerable_versions": ">=10.0.0 <10.2.1"
+    },
+    {
+      "package": "minimatch",
+      "id": "GHSA-7r86-cg39-jmmj",
+      "title": "minimatch has ReDoS: matchOne() combinatorial backtracking via multiple non-adjacent GLOBSTAR segments",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-7r86-cg39-jmmj",
+      "vulnerable_versions": ">=10.0.0 <10.2.3"
+    },
+    {
+      "package": "minimatch",
+      "id": "GHSA-23c5-xmqv-rm74",
+      "title": "minimatch ReDoS: nested *() extglobs generate catastrophically backtracking regular expressions",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-23c5-xmqv-rm74",
+      "vulnerable_versions": ">=10.0.0 <10.2.3"
+    },
+    {
+      "package": "path-to-regexp",
+      "id": "GHSA-j3q9-mxjg-w52f",
+      "title": "path-to-regexp vulnerable to Denial of Service via sequential optional groups",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-j3q9-mxjg-w52f",
+      "vulnerable_versions": ">=8.0.0 <8.4.0"
+    },
+    {
+      "package": "path-to-regexp",
+      "id": "GHSA-27v5-c462-wpq7",
+      "title": "path-to-regexp vulnerable to Regular Expression Denial of Service via multiple wildcards",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-27v5-c462-wpq7",
+      "vulnerable_versions": ">=8.0.0 <8.4.0"
+    },
+    {
+      "package": "picomatch",
+      "id": "GHSA-3v7f-55p6-f55p",
+      "title": "Picomatch: Method Injection in POSIX Character Classes causes incorrect Glob Matching",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-3v7f-55p6-f55p",
+      "vulnerable_versions": ">=4.0.0 <4.0.4"
+    },
+    {
+      "package": "picomatch",
+      "id": "GHSA-c2c7-rcm5-vvqj",
+      "title": "Picomatch has a ReDoS vulnerability via extglob quantifiers",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-c2c7-rcm5-vvqj",
+      "vulnerable_versions": ">=4.0.0 <4.0.4"
+    },
+    {
+      "package": "qs",
+      "id": "GHSA-4mjr-xmp4-gh2g",
+      "title": "qs: Denial of Service via Attacker Controlled isBuffer",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-4mjr-xmp4-gh2g",
+      "vulnerable_versions": ">=2.2.5 <6.16.0"
+    },
+    {
+      "package": "qs",
+      "id": "GHSA-q8mj-m7cp-5q26",
+      "title": "qs has a remotely triggerable DoS: qs.stringify crashes with TypeError on null/undefined entries in comma-format arrays when encodeValuesOnly is set",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-q8mj-m7cp-5q26",
+      "vulnerable_versions": ">=6.11.1 <=6.15.1"
+    },
+    {
+      "package": "qs",
+      "id": "GHSA-w7fw-mjwx-w883",
+      "title": "qs's arrayLimit bypass in comma parsing allows denial of service",
+      "severity": "low",
+      "url": "https://github.com/advisories/GHSA-w7fw-mjwx-w883",
+      "vulnerable_versions": ">=6.7.0 <=6.14.1"
+    },
+    {
+      "package": "rollup",
+      "id": "GHSA-mw96-cpmx-2vgc",
+      "title": "Rollup 4 has Arbitrary File Write via Path Traversal",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-mw96-cpmx-2vgc",
+      "vulnerable_versions": ">=4.0.0 <4.59.0"
+    },
+    {
+      "package": "sigstore",
+      "id": "GHSA-52v5-jr5w-gjxr",
+      "title": "sigstore's `certificateOIDs` verification constraints are silently dropped and never enforced",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-52v5-jr5w-gjxr",
+      "vulnerable_versions": "<=4.1.0"
+    },
+    {
+      "package": "source-map-js",
+      "id": "GHSA-68fv-2mgg-jv7q",
+      "title": "source-map-js allows event-loop denial of service through indexed source-map section offsets",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-68fv-2mgg-jv7q",
+      "vulnerable_versions": ">=1.0.0 <1.2.2"
+    },
+    {
+      "package": "ws",
+      "id": "GHSA-58qx-3vcg-4xpx",
+      "title": "ws: Uninitialized memory disclosure",
+      "severity": "moderate",
+      "url": "https://github.com/advisories/GHSA-58qx-3vcg-4xpx",
+      "vulnerable_versions": ">=8.0.0 <8.20.1"
+    },
+    {
+      "package": "ws",
+      "id": "GHSA-96hv-2xvq-fx4p",
+      "title": "ws: Memory exhaustion DoS from tiny fragments and data chunks",
+      "severity": "high",
+      "url": "https://github.com/advisories/GHSA-96hv-2xvq-fx4p",
+      "vulnerable_versions": ">=8.0.0 <8.21.0"
+    }
+  ]
+}

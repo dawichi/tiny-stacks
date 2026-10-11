@@ -458,7 +458,9 @@ export class Simulation {
             roll -= entry.weight;
             if (roll < 0) return entry;
         }
-        return pattern.distribution[pattern.distribution.length - 1];
+        const fallback = pattern.distribution.at(-1);
+        if (!fallback) throw new Error('Traffic pattern distribution must contain at least one entry.');
+        return fallback;
     }
 
     private createRequest(
@@ -798,7 +800,7 @@ export class Simulation {
             roll -= weightOf(conn);
             if (roll < 0) return conn;
         }
-        return eligible[eligible.length - 1];
+        return eligible.at(-1) ?? null;
     }
 
     private leastLoaded(eligible: Connection[], ctx: StepContext): Connection | null {

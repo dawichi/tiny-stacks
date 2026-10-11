@@ -6,7 +6,6 @@ import type { Board, Connection } from '../../core/game/game-state.service';
 import { createConnectionId, createServiceId, GameStateService } from '../../core/game/game-state.service';
 import { ServiceType } from '../../core/game/service-types.config';
 import { RequestMethod, type TrafficPattern, WRITE_METHODS } from '../../core/game/sim-types';
-import type { SimSpeed } from '../../core/game/tick-engine.service';
 import { DEFAULT_TRAFFIC, SIM_SPEEDS, TickEngineService } from '../../core/game/tick-engine.service';
 import { SANDBOX_STATE_VERSION, StorageKeys, StorageService } from '../../core/storage/storage.service';
 import { sanitizeSandboxState } from '../../core/storage/storage-schema';
@@ -30,7 +29,7 @@ import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
     template: `
     <main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
       <header class="max-w-5xl mx-auto mb-6 flex items-center gap-4">
-        <a routerLink="/" class="text-slate-400 hover:text-slate-600 transition-colors" aria-label="Back to home">
+        <a routerLink="/" class="text-slate-600 hover:text-slate-700 transition-colors" aria-label="Back to home">
           <lucide-icon [img]="ArrowLeftIcon" [size]="20" />
         </a>
         <div class="flex-1">
@@ -62,31 +61,31 @@ import { ScreenGuardComponent } from '../screen-guard/screen-guard.component';
       <app-screen-guard />
 
       <aside class="fixed left-6 top-28 z-40 w-56 rounded-xl border border-white/50 bg-white/75 p-3 shadow-lg backdrop-blur-md">
-        <h2 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-400">Live system</h2>
+        <h2 class="mb-2 text-[10px] font-semibold uppercase tracking-wider text-slate-600">Live system</h2>
         <div class="grid grid-cols-2 gap-x-3 gap-y-2">
           <div>
             <div class="text-sm font-semibold text-slate-700">{{ metrics().throughput | number: '1.0-1' }}/s</div>
-            <div class="text-[9px] text-slate-400">Throughput</div>
+            <div class="text-[9px] text-slate-600">Throughput</div>
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-700">{{ metrics().errorRate | number: '1.0-1' }}%</div>
-            <div class="text-[9px] text-slate-400">Errors</div>
+            <div class="text-[9px] text-slate-600">Errors</div>
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-700">{{ metrics().avgLatency | number: '1.0-0' }} ms</div>
-            <div class="text-[9px] text-slate-400">Average latency</div>
+            <div class="text-[9px] text-slate-600">Average latency</div>
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-700">{{ metrics().p95Latency | number: '1.0-0' }} ms</div>
-            <div class="text-[9px] text-slate-400">P95 latency</div>
+            <div class="text-[9px] text-slate-600">P95 latency</div>
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-700">&#36;{{ metrics().costPerSecond | number: '1.0-0' }}/s</div>
-            <div class="text-[9px] text-slate-400">Current cost</div>
+            <div class="text-[9px] text-slate-600">Current cost</div>
           </div>
           <div>
             <div class="text-sm font-semibold text-slate-700">{{ metrics().asyncPending }}</div>
-            <div class="text-[9px] text-slate-400">Queued messages</div>
+            <div class="text-[9px] text-slate-600">Queued messages</div>
           </div>
         </div>
       </aside>
@@ -139,8 +138,8 @@ export class SandboxPageComponent implements OnInit, OnDestroy {
 
     protected cycleSpeed(): void {
         const index = SIM_SPEEDS.indexOf(this.speed());
-        const next: SimSpeed = SIM_SPEEDS[(index + 1) % SIM_SPEEDS.length];
-        this.simulation.speed.set(next);
+        const next = SIM_SPEEDS[(index + 1) % SIM_SPEEDS.length];
+        if (next !== undefined) this.simulation.speed.set(next);
     }
 
     private restoreTraffic(board: Board, savedRates: Record<string, number>): void {

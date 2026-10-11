@@ -1,7 +1,7 @@
 <main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8 relative">
   <header class="max-w-5xl mx-auto mb-6 flex items-center gap-4 pl-44">
     <button
-      class="text-slate-400 hover:text-slate-600 transition-colors"
+      class="text-slate-600 hover:text-slate-700 transition-colors"
       aria-label="Back to challenges"
       (click)="onBack()"
     >
@@ -9,15 +9,16 @@
     </button>
     <div class="flex-1 min-w-0">
       <h1 class="text-xl font-bold text-slate-800">{{ challenge()?.name }}</h1>
-      <p class="text-xs text-slate-500 truncate">{{ challenge()?.description }}</p>
+      <p class="text-xs text-slate-600 truncate">{{ challenge()?.description }}</p>
     </div>
 
-    <div class="flex gap-1.5" aria-label="Best stars earned">
+    <div class="flex gap-1.5" role="img" [attr.aria-label]="bestStarsLabel()">
       @for (earned of starStatus(); track $index) {
         <lucide-icon
           [img]="StarIcon"
           [size]="21"
           [class]="earned ? 'star-filled text-amber-400' : 'text-slate-300'"
+          aria-hidden="true"
         />
       }
     </div>
@@ -43,21 +44,21 @@
 
   @if (!showBriefing() && phase() !== 'results' && challenge()) {
     <aside class="fixed top-6 left-6 z-50 w-64 rounded-xl border border-white/40 bg-white/75 p-4 shadow-xl backdrop-blur-md">
-      <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-500">Deploy challenge</h2>
+      <h2 class="mb-3 text-xs font-semibold uppercase tracking-wider text-slate-600">Deploy challenge</h2>
 
       @if (phase() === 'build') {
         <p class="mb-2 text-xs leading-relaxed text-slate-600">
           The board runs at baseline traffic while you build. Current topology matches up to
           <strong>{{ topologyStars() }} of 3 stars</strong>. Deploy to score it under the full traffic scenario.
         </p>
-        <div class="mb-3 grid grid-cols-2 gap-2 text-[10px] text-slate-500">
+        <div class="mb-3 grid grid-cols-2 gap-2 text-[10px] text-slate-600">
           <span>{{ metrics().throughput | number: '1.0-1' }} req/s</span>
           <span>{{ metrics().errorRate | number: '1.0-1' }}% errors</span>
           <span>{{ metrics().p95Latency | number: '1.0-0' }} ms P95</span>
           <span>${{ metrics().costPerSecond | number: '1.0-0' }}/s</span>
         </div>
         <button
-          class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-500 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-600"
+          class="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-700 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-blue-800"
           (click)="onDeploy()"
         >
           <lucide-icon [img]="PlayIcon" [size]="14" />
@@ -68,7 +69,7 @@
         <div class="h-1.5 overflow-hidden rounded-full bg-slate-200">
           <div class="h-full rounded-full bg-blue-500 transition-[width]" [style.width.%]="runProgress()"></div>
         </div>
-        <p class="mt-1 text-right text-[10px] text-slate-400">
+        <p class="mt-1 text-right text-[10px] text-slate-600">
           {{ (run()?.elapsedMs ?? 0) / 1000 | number: '1.0-0' }}s
         </p>
       }
@@ -82,7 +83,7 @@
               class="mt-0.5 shrink-0"
               [class]="star.earned ? 'star-filled text-amber-400' : 'text-slate-300'"
             />
-            <span class="text-[11px] leading-snug" [class]="star.earned ? 'text-slate-400 line-through' : 'text-slate-600'">
+            <span class="text-[11px] leading-snug" [class]="star.earned ? 'text-slate-600 line-through' : 'text-slate-600'">
               {{ star.label }}
             </span>
           </div>
@@ -93,12 +94,19 @@
 
   @if (showBriefing()) {
     <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 backdrop-blur-sm">
-      <section class="panel-in mx-4 max-w-md rounded-2xl border border-white/60 bg-white/95 p-8 shadow-2xl">
+      <section
+        class="panel-in mx-4 max-w-md rounded-2xl border border-white/60 bg-white/95 p-8 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="challenge-briefing-title"
+        tabindex="-1"
+        (keydown)="onDialogKeydown($event)"
+      >
         <p class="mb-2 text-xs font-semibold uppercase tracking-wider text-blue-500">Challenge briefing</p>
-        <h2 class="mb-2 text-2xl font-bold text-slate-800">{{ challenge()?.name }}</h2>
+        <h2 id="challenge-briefing-title" class="mb-2 text-2xl font-bold text-slate-800">{{ challenge()?.name }}</h2>
         <p class="mb-6 text-sm leading-relaxed text-slate-600">{{ challenge()?.briefing }}</p>
 
-        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">Star goals</h3>
+        <h3 class="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-600">Star goals</h3>
         <div class="mb-6 flex flex-col gap-2">
           @for (star of challenge()?.stars ?? []; track $index) {
             <div class="flex items-start gap-2 text-sm text-slate-600">
@@ -109,7 +117,10 @@
         </div>
 
         <button
-          class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-500 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-blue-600"
+          #briefingPrimaryAction
+          type="button"
+          autofocus
+          class="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-700 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-blue-800"
           (click)="onStart()"
         >
           <lucide-icon [img]="PlayIcon" [size]="16" />
@@ -121,36 +132,42 @@
 
   @if (results(); as result) {
     <div class="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 p-4 backdrop-blur-sm">
-      <section class="panel-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/60 bg-white/95 p-7 shadow-2xl">
-        <h2 class="mb-1 text-center text-2xl font-bold text-slate-800">
+      <section
+        class="panel-in max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-white/60 bg-white/95 p-7 shadow-2xl"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="challenge-results-title"
+        (keydown)="onDialogKeydown($event)"
+      >
+        <h2 id="challenge-results-title" class="mb-1 text-center text-2xl font-bold text-slate-800">
           {{ result.stars === 3 ? 'Challenge complete!' : 'Deploy results' }}
         </h2>
-        <p class="mb-5 text-center text-sm text-slate-500">{{ result.stars }} of 3 stars earned</p>
+        <p class="mb-5 text-center text-sm text-slate-600">{{ result.stars }} of 3 stars earned</p>
 
         <div class="mb-5 grid grid-cols-3 gap-2">
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">{{ result.summary.completed }}</div>
-            <div class="text-[10px] text-slate-400">Completed</div>
+            <div class="text-[10px] text-slate-600">Completed</div>
           </div>
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">{{ result.summary.errorRate | number: '1.0-1' }}%</div>
-            <div class="text-[10px] text-slate-400">Error rate</div>
+            <div class="text-[10px] text-slate-600">Error rate</div>
           </div>
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">{{ result.summary.p95Latency | number: '1.0-0' }} ms</div>
-            <div class="text-[10px] text-slate-400">P95 latency</div>
+            <div class="text-[10px] text-slate-600">P95 latency</div>
           </div>
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">{{ result.summary.throughput | number: '1.0-1' }}/s</div>
-            <div class="text-[10px] text-slate-400">Throughput</div>
+            <div class="text-[10px] text-slate-600">Throughput</div>
           </div>
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">${{ result.summary.cost | number: '1.0-0' }}</div>
-            <div class="text-[10px] text-slate-400">Deploy cost</div>
+            <div class="text-[10px] text-slate-600">Deploy cost</div>
           </div>
           <div class="rounded-lg bg-slate-50 p-2 text-center">
             <div class="text-sm font-semibold text-slate-700">{{ result.summary.dbOperations }}</div>
-            <div class="text-[10px] text-slate-400">DB operations</div>
+            <div class="text-[10px] text-slate-600">DB operations</div>
           </div>
         </div>
 
@@ -161,9 +178,9 @@
                 <lucide-icon [img]="StarIcon" [size]="16" [class]="tier.earned ? 'star-filled text-amber-400' : 'text-slate-300'" />
                 <h3 class="text-xs font-semibold text-slate-700">{{ tier.label }}</h3>
                 @if (!tier.topologyPassed) {
-                  <span class="ml-auto text-[10px] text-slate-400">Topology not matched</span>
+                  <span class="ml-auto text-[10px] text-slate-600">Topology not matched</span>
                 } @else if (tier.earned) {
-                  <span class="ml-auto text-[10px] font-semibold text-emerald-600">Earned</span>
+                  <span class="ml-auto text-[10px] font-semibold text-emerald-700">Earned</span>
                 }
               </div>
               @if (tier.thresholds.length > 0) {
@@ -182,7 +199,10 @@
 
         <div class="flex flex-wrap gap-2">
           <button
-            class="flex-1 rounded-xl bg-blue-500 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-600"
+            #resultsPrimaryAction
+            type="button"
+            autofocus
+            class="flex-1 rounded-xl bg-blue-700 px-3 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-800"
             (click)="onKeepBuilding()"
           >
             Keep building

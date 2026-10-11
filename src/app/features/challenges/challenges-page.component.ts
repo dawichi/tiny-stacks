@@ -8,9 +8,9 @@ import { ChallengeService } from '../../core/challenges/challenge.service';
     standalone: true,
     imports: [RouterLink, LucideAngularModule],
     template: `
-    <div class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
+    <main class="min-h-screen bg-gradient-to-br from-slate-50 to-slate-200 p-8">
       <header class="max-w-4xl mx-auto mb-8 flex items-center gap-4">
-        <a routerLink="/" class="text-slate-400 hover:text-slate-600 transition-colors">
+        <a routerLink="/" class="text-slate-600 hover:text-slate-700 transition-colors" aria-label="Back to home">
           <lucide-icon [img]="ArrowLeftIcon" [size]="20" />
         </a>
         <div>
@@ -27,31 +27,33 @@ import { ChallengeService } from '../../core/challenges/challenge.service';
               class="challenge-card unlocked"
             >
               <div class="flex items-center justify-between mb-3">
-                <span class="text-sm font-medium text-slate-400">{{ level.name }}</span>
+                <span class="text-sm font-medium text-slate-700">{{ level.name }}</span>
                 <div class="flex gap-0.5">
                   @for (i of [0, 1, 2]; track i) {
                     <lucide-icon
                       [img]="StarIcon"
                       [size]="14"
                       [class]="i < level.starsEarned ? 'star-filled text-amber-400' : 'text-slate-300'"
+                      aria-hidden="true"
                     />
                   }
+                  <span class="sr-only">{{ level.starsEarned }} of 3 stars earned</span>
                 </div>
               </div>
-              <p class="text-sm text-slate-500">{{ level.description }}</p>
+              <p class="text-sm text-slate-600">{{ level.description }}</p>
             </a>
           } @else {
             <div class="challenge-card locked">
               <div class="flex items-center justify-between mb-3">
-                <span class="text-sm font-medium text-slate-400">{{ level.name }}</span>
-                <lucide-icon [img]="LockIcon" [size]="16" class="text-slate-300" />
+                <span class="text-sm font-medium text-slate-700">{{ level.name }}</span>
+                <lucide-icon [img]="LockIcon" [size]="16" class="text-slate-500" aria-hidden="true" />
               </div>
-              <p class="text-sm text-slate-300">{{ level.description }}</p>
+              <p class="text-sm text-slate-600">{{ level.description }}</p>
             </div>
           }
         }
       </div>
-    </div>
+    </main>
   `,
     styles: [
         `
@@ -74,7 +76,6 @@ import { ChallengeService } from '../../core/challenges/challenge.service';
       box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
     }
     .challenge-card.locked {
-      opacity: 0.6;
       cursor: not-allowed;
     }
   `,

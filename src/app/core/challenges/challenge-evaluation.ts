@@ -25,21 +25,28 @@ export interface ChallengeSetup {
 
 export function buildChallengeSetup(def: ChallengeDefinition): ChallengeSetup {
     const serviceIds = def.services.map(() => createServiceId());
+    const getServiceId = (index: number, relation: string): string => {
+        const serviceId = serviceIds[index];
+        if (serviceId === undefined) {
+            throw new RangeError(`Invalid challenge definition: ${relation} references service index ${index}.`);
+        }
+        return serviceId;
+    };
     const services = def.services.map((svc, i) => ({
-        id: serviceIds[i],
+        id: getServiceId(i, 'service'),
         type: svc.type,
         gridX: svc.gridX,
         gridY: svc.gridY,
     }));
     const connections = def.connections.map((conn) => ({
         id: createConnectionId(),
-        source: { serviceId: serviceIds[conn.sourceIndex], portIndex: conn.sourcePortIndex },
-        target: { serviceId: serviceIds[conn.targetIndex], portIndex: conn.targetPortIndex },
+        source: { serviceId: getServiceId(conn.sourceIndex, 'connection source'), portIndex: conn.sourcePortIndex },
+        target: { serviceId: getServiceId(conn.targetIndex, 'connection target'), portIndex: conn.targetPortIndex },
         ...(conn.filter ? { filter: { ...conn.filter, methods: [...conn.filter.methods] } } : {}),
     }));
-    const traffic = new Map(def.traffic.map((t) => [serviceIds[t.originIndex], t.pattern]));
+    const traffic = new Map(def.traffic.map((t) => [getServiceId(t.originIndex, 'traffic origin'), t.pattern]));
     const outages = (def.outages ?? []).map((o) => ({
-        serviceId: serviceIds[o.serviceIndex],
+        serviceId: getServiceId(o.serviceIndex, 'outage'),
         atMs: o.atMs,
         durationMs: o.durationMs,
     }));
@@ -58,11 +65,13 @@ export function countPaths(board: Board, path: ServiceType[]): number {
 
     const countFrom = (serviceId: string, index: number): number => {
         if (index >= path.length) return 1;
+        const expectedType = path[index];
+        if (expectedType === undefined) return 0;
         let sum = 0;
         for (const conn of board.connections) {
             if (conn.source.serviceId !== serviceId) continue;
             const target = byId.get(conn.target.serviceId);
-            if (target?.type === path[index]) sum += countFrom(target.id, index + 1);
+            if (target?.type === expectedType) sum += countFrom(target.id, index + 1);
         }
         return sum;
     };
@@ -72,12 +81,13 @@ export function countPaths(board: Board, path: ServiceType[]): number {
 
 /** A direct `path[0] → path[1]` connection whose route rule allows exactly `methods` */
 export function hasFilteredHop(board: Board, path: ServiceType[], methods: RequestMethod[]): boolean {
-    if (path.length < 2) return false;
+    const [sourceType, targetType] = path;
+    if (sourceType === undefined || targetType === undefined) return false;
     const byId = new Map(board.services.map((s) => [s.id, s]));
     const required = [...methods].sort();
     return board.connections.some((conn) => {
-        if (byId.get(conn.source.serviceId)?.type !== path[0]) return false;
-        if (byId.get(conn.target.serviceId)?.type !== path[1]) return false;
+        if (byId.get(conn.source.serviceId)?.type !== sourceType) return false;
+        if (byId.get(conn.target.serviceId)?.type !== targetType) return false;
         const actual = [...(conn.filter?.methods ?? [])].sort();
         return actual.length === required.length && actual.every((m, i) => m === required[i]);
     });
@@ -119,7 +129,7 @@ export function topologyPasses(board: Board, cond: TopologyCondition): boolean {
  */
 export function topologyTier(def: ChallengeDefinition, board: Board): number {
     for (let tier = def.stars.length; tier >= 1; tier--) {
-        if (def.stars[tier - 1].conditions.every((cond) => topologyPasses(board, cond))) return tier;
+        if (def.stars[tier - 1]?.conditions.every((cond) => topologyPasses(board, cond))) return tier;
     }
     return 0;
 }
@@ -149,12 +159,15 @@ export function scoreDeploy(def: ChallengeDefinition, board: Board, summary: Run
 
     let stars = 0;
     for (let tier = maxTier; tier >= 1; tier--) {
-        if (tiers[tier - 1].thresholds.every((t) => t.passed)) {
+        if (tiers[tier - 1]?.thresholds.every((t) => t.passed)) {
             stars = tier;
             break;
         }
     }
-    for (let i = 0; i < stars; i++) tiers[i].earned = true;
+    for (let i = 0; i < stars; i++) {
+        const tier = tiers[i];
+        if (tier) tier.earned = true;
+    }
 
     return { summary, stars, tiers };
 }

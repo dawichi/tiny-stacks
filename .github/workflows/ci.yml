@@ -4,6 +4,8 @@ on:
   push:
   pull_request:
   workflow_dispatch:
+  schedule:
+    - cron: '23 8 * * 1'
 
 permissions:
   contents: read
@@ -23,8 +25,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: Type-check app and test projects
+        run: bun run typecheck
+
       - name: Check source formatting and lint
         run: bun run check
+
+      - name: Fail on critical dependency advisories
+        run: bun audit --audit-level=critical
 
       - name: Run unit tests
         run: bun run test

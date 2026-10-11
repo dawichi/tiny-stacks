@@ -5,7 +5,7 @@ import { RequestMethod } from '../game/sim-types';
 import { TickEngineService } from '../game/tick-engine.service';
 import { StorageService } from '../storage/storage.service';
 import { ChallengeService } from './challenge.service';
-import { mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-helpers';
+import { mustAt, mustConnect, mustFind, mustPlace, runTicks } from './challenge-test-helpers';
 
 const mockStorage = { getItem: () => null, setItem: () => {} };
 
@@ -43,12 +43,14 @@ describe('Level 6: Scale + Cache:star evaluation', () => {
     it('earns 1 star when LB routes to both backends but no Cache placed', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
 
         // Both backends through LB; pre-drawn REST→DB connections already exist
         gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rests[1].id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rest1.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rest2.id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
         const stars = challengeService.starStatus();
@@ -60,15 +62,17 @@ describe('Level 6: Scale + Cache:star evaluation', () => {
     it('earns 2 stars when both REST instances route through the shared Cache', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
         const cache = mustPlace(gameState, ServiceType.CACHE, 12, 5);
 
         gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rests[1].id, portIndex: 0 });
-        gameState.addConnection({ serviceId: rests[0].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: rests[1].id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rest1.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rest2.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest1.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: rest2.id, portIndex: 1 }, { serviceId: cache.id, portIndex: 0 });
         gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
 
         runTicks(tickEngine, 1000);
@@ -81,31 +85,33 @@ describe('Level 6: Scale + Cache:star evaluation', () => {
     it('earns 3 stars when both backends use shared Cache with GET-only filter', () => {
         const origin = mustFind(gameState.services(), (s) => s.type === ServiceType.ORIGIN, 'origin');
         const rests = gameState.services().filter((s) => s.type === ServiceType.REST_SERVICE);
+        const rest1 = mustAt(rests, 0, 'first REST service');
+        const rest2 = mustAt(rests, 1, 'second REST service');
         const db = mustFind(gameState.services(), (s) => s.type === ServiceType.DATABASE, 'database');
         const lb = mustPlace(gameState, ServiceType.LOAD_BALANCER, 4, 5);
         const cache = mustPlace(gameState, ServiceType.CACHE, 12, 5);
 
         gameState.addConnection({ serviceId: origin.id, portIndex: 0 }, { serviceId: lb.id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rests[0].id, portIndex: 0 });
-        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rests[1].id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 1 }, { serviceId: rest1.id, portIndex: 0 });
+        gameState.addConnection({ serviceId: lb.id, portIndex: 2 }, { serviceId: rest2.id, portIndex: 0 });
 
         const cacheConn0 = mustConnect(
             gameState,
-            { serviceId: rests[0].id, portIndex: 1 },
+            { serviceId: rest1.id, portIndex: 1 },
             { serviceId: cache.id, portIndex: 0 },
         );
         gameState.updateConnectionFilter(cacheConn0.id, { methods: [RequestMethod.GET], weight: 100 });
 
         const cacheConn1 = mustConnect(
             gameState,
-            { serviceId: rests[1].id, portIndex: 1 },
+            { serviceId: rest2.id, portIndex: 1 },
             { serviceId: cache.id, portIndex: 0 },
         );
         gameState.updateConnectionFilter(cacheConn1.id, { methods: [RequestMethod.GET], weight: 100 });
 
         gameState.addConnection({ serviceId: cache.id, portIndex: 1 }, { serviceId: db.id, portIndex: 0 });
 
-        for (const rest of rests) {
+        for (const rest of [rest1, rest2]) {
             const directDbConnection = gameState
                 .connections()
                 .find((connection) => connection.source.serviceId === rest.id && connection.target.serviceId === db.id);

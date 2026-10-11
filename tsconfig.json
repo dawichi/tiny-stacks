@@ -5,9 +5,13 @@
   "compilerOptions": {
     "strict": true,
     "noImplicitOverride": true,
+    "noUncheckedIndexedAccess": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "noPropertyAccessFromIndexSignature": true,
     "noImplicitReturns": true,
     "noFallthroughCasesInSwitch": true,
+    "exactOptionalPropertyTypes": true,
     "skipLibCheck": true,
     "isolatedModules": true,
     "experimentalDecorators": true,

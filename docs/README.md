@@ -15,6 +15,8 @@ This directory contains tiny-stacks' current architecture, gameplay references, 
 - [Challenge goals and calibration](gameplay/challenges.md) — level progression, scoring thresholds, and reference topology.
 - [UI layout map](design/ui-layout.md) — fixed panels, overlays, and z-index rules.
 - [Development and deployment](operations/deployment.md) — Bun commands, CI behavior, Vercel deployment, and recovery.
+- [Dependency security response](operations/dependency-security.md) — monitoring, remediation targets, current audit evidence, and the direct-push exception.
+- [Accessibility review](operations/accessibility-review.md) — retained route scan, keyboard journeys, findings, and review cadence.
 - [ADR index](adr/README.md) — durable project decisions.
 
 ## Documentation rules

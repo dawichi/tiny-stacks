@@ -16,6 +16,7 @@ export interface PortPosition {
 export function getPortAbsolutePosition(service: PlacedService, portIndex: number, cellSize: number): PortPosition {
     const config = getServiceConfig(service.type);
     const port = config.ports[portIndex];
+    if (!port) throw new RangeError(`Port index ${portIndex} is invalid for ${service.type}.`);
 
     const servicePixelX = service.gridX * cellSize;
     const servicePixelY = service.gridY * cellSize;

@@ -5,7 +5,7 @@ import type { SimOutage } from '../game/sim-types';
 import { TickEngineService } from '../game/tick-engine.service';
 import { StorageKeys, StorageService } from '../storage/storage.service';
 import { sanitizeProgress } from '../storage/storage-schema';
-import type { ChallengeDefinition, ChallengeProgress, DeployResult } from './challenge.model';
+import type { ChallengeDefinition, ChallengeProgress, ChallengeProgressEntry, DeployResult } from './challenge.model';
 import { CHALLENGE_DEFINITIONS } from './challenge-definitions';
 import { buildChallengeSetup, scoreDeploy, topologyTier } from './challenge-evaluation';
 
@@ -58,7 +58,9 @@ export class ChallengeService {
     isUnlocked(id: string): boolean {
         const index = CHALLENGE_DEFINITIONS.findIndex((c) => c.id === id);
         if (index <= 0) return true;
-        const prevId = CHALLENGE_DEFINITIONS[index - 1].id;
+        const previous = CHALLENGE_DEFINITIONS[index - 1];
+        if (!previous) return true;
+        const prevId = previous.id;
         return (this.progress()[prevId]?.starsEarned ?? 0) >= 1;
     }
 
@@ -139,12 +141,15 @@ export class ChallengeService {
         const { summary, stars } = result;
         const better = (value: number, best: number | undefined) =>
             best === undefined ? value : Math.min(value, best);
-        const entry = {
-            starsEarned: Math.max(stars, prev?.starsEarned ?? 0),
-            bestP95: stars > 0 ? better(summary.p95Latency, prev?.bestP95) : prev?.bestP95,
-            bestErrorRate: stars > 0 ? better(summary.errorRate, prev?.bestErrorRate) : prev?.bestErrorRate,
-            bestCost: stars > 0 ? better(summary.cost, prev?.bestCost) : prev?.bestCost,
-        };
+        const entry: ChallengeProgressEntry = { starsEarned: Math.max(stars, prev?.starsEarned ?? 0) };
+        for (const [key, value, previous] of [
+            ['bestP95', summary.p95Latency, prev?.bestP95],
+            ['bestErrorRate', summary.errorRate, prev?.bestErrorRate],
+            ['bestCost', summary.cost, prev?.bestCost],
+        ] as const) {
+            const best = stars > 0 ? better(value, previous) : previous;
+            if (best !== undefined) entry[key] = best;
+        }
         const updated: ChallengeProgress = { ...current, [id]: entry };
         this.progress.set(updated);
         this.storage.setItem(StorageKeys.CHALLENGE_PROGRESS, updated);

@@ -11,8 +11,13 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
     template: `
     <div
       class="service absolute rounded-lg flex flex-col items-center justify-center cursor-grab
-             transition-shadow duration-150 hover:scale-[1.02] hover:shadow-lg overflow-hidden"
+             transition-shadow duration-150 hover:scale-[1.02] hover:shadow-lg overflow-hidden
+             focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
       (mousedown)="onServiceMouseDown($event)"
+      (keydown)="onServiceKeyDown($event)"
+      tabindex="0"
+      role="group"
+      [attr.aria-label]="serviceAccessibleLabel()"
       [class.cursor-not-allowed]="locked()"
       [attr.aria-disabled]="locked()"
       [class.ring-2]="isSelected()"
@@ -32,11 +37,12 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
         [img]="iconComponent()"
         [size]="iconSize()"
         class="text-white/90 drop-shadow-sm"
+        aria-hidden="true"
       />
 
       <!-- Service name -->
       <span
-        class="text-[10px] font-medium text-white/80 mt-1 text-center leading-tight px-1"
+        class="text-[10px] font-medium text-slate-900/90 mt-1 text-center leading-tight px-1"
         [class.hidden]="height() < 60"
       >
         {{ config().name }}
@@ -44,7 +50,7 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
 
       <!-- Origin rps label -->
       @if (originRps() !== null) {
-        <span class="text-[9px] font-semibold text-white/70 leading-none mt-0.5">
+        <span class="text-[9px] font-semibold text-slate-900/90 leading-none mt-0.5">
           {{ originRps() }} req/s
         </span>
       }
@@ -62,15 +68,19 @@ import type { ServiceVisualState } from '../../core/game/tick-engine.service';
 
       <!-- Port dots -->
       @for (port of config().ports; track $index) {
-        <div
-          class="port-dot absolute w-3 h-3 rounded-full border-2 border-white shadow-sm cursor-crosshair"
+        <button
+          type="button"
+          class="port-dot absolute w-3 h-3 rounded-full border-2 border-white shadow-sm cursor-crosshair p-0
+                 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-900"
           [class.port-highlight]="connectionDragActive()"
           [style.background-color]="portColor(port.direction)"
           [style.left.px]="portX(port)"
           [style.top.px]="portY(port)"
+          [attr.aria-label]="portLabel(port, $index)"
           (mousedown)="onPortMouseDown($event, $index)"
           (mouseup)="onPortMouseUp($event, $index)"
-        ></div>
+          (click)="onPortClick($event, $index)"
+        ></button>
       }
     </div>
   `,
@@ -138,6 +148,9 @@ export class ServiceComponent {
     readonly portDragStart = output<{ serviceId: string; portIndex: number }>();
     readonly portDragEnd = output<{ serviceId: string; portIndex: number }>();
     readonly moveDragStart = output<{ serviceId: string }>();
+    readonly keyboardSelect = output<{ serviceId: string }>();
+    readonly keyboardMove = output<{ serviceId: string; deltaX: number; deltaY: number }>();
+    readonly portActivate = output<{ serviceId: string; portIndex: number }>();
 
     // ── Properties ─────────────────────────────────────────────────────
     private readonly icons = {
@@ -151,6 +164,14 @@ export class ServiceComponent {
     };
 
     protected readonly config = computed(() => getServiceConfig(this.service().type));
+    protected readonly serviceAccessibleLabel = computed(() => {
+        const service = this.service();
+        const position = `Column ${service.gridX + 1}, row ${service.gridY + 1}.`;
+        const instructions = this.locked()
+            ? 'Locked in place. Press Enter to select.'
+            : 'Press Enter to select. Use arrow keys to move one cell.';
+        return `${this.config().name}. ${position} ${instructions}`;
+    });
 
     protected readonly positionX = computed(() => this.service().gridX * this.cellSize());
     protected readonly positionY = computed(() => this.service().gridY * this.cellSize());
@@ -212,6 +233,10 @@ export class ServiceComponent {
         }
     }
 
+    protected portLabel(port: { direction: string }, portIndex: number): string {
+        return `${this.config().name} ${port.direction} port ${portIndex + 1}`;
+    }
+
     protected portX(port: { cellOffsetX: number; edge: string }): number {
         const cellSize = this.cellSize();
         const baseX = port.cellOffsetX * cellSize;
@@ -241,9 +266,29 @@ export class ServiceComponent {
     }
 
     protected onServiceMouseDown(event: MouseEvent): void {
-        event.preventDefault();
-        if (this.locked()) return;
+        if (event.button !== 0 || this.locked()) return;
         this.moveDragStart.emit({ serviceId: this.service().id });
+    }
+
+    protected onServiceKeyDown(event: KeyboardEvent): void {
+        if (event.target !== event.currentTarget) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            this.keyboardSelect.emit({ serviceId: this.service().id });
+            return;
+        }
+        if (this.locked()) return;
+
+        const movement: Record<string, { deltaX: number; deltaY: number }> = {
+            ArrowLeft: { deltaX: -1, deltaY: 0 },
+            ArrowRight: { deltaX: 1, deltaY: 0 },
+            ArrowUp: { deltaX: 0, deltaY: -1 },
+            ArrowDown: { deltaX: 0, deltaY: 1 },
+        };
+        const delta = movement[event.key];
+        if (!delta) return;
+        event.preventDefault();
+        this.keyboardMove.emit({ serviceId: this.service().id, ...delta });
     }
 
     protected onPortMouseDown(event: MouseEvent, portIndex: number): void {
@@ -255,5 +300,11 @@ export class ServiceComponent {
     protected onPortMouseUp(event: MouseEvent, portIndex: number): void {
         event.stopPropagation();
         this.portDragEnd.emit({ serviceId: this.service().id, portIndex });
+    }
+
+    protected onPortClick(event: MouseEvent, portIndex: number): void {
+        event.stopPropagation();
+        if (event.detail !== 0) return;
+        this.portActivate.emit({ serviceId: this.service().id, portIndex });
     }
 }

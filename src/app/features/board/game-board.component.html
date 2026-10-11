@@ -1,14 +1,26 @@
 <div
-  class="game-board relative bg-slate-100 rounded-lg overflow-hidden"
+  role="region"
+  aria-label="Network design board"
+  aria-describedby="game-board-instructions"
+  tabindex="0"
+  class="game-board relative bg-slate-100 rounded-lg overflow-hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
   [class.cursor-grabbing]="moveDragServiceId()"
   [style.width.px]="boardWidth()"
   [style.height.px]="boardHeight()"
   (dragover)="onDragOver($event)"
   (dragleave)="onDragLeave($event)"
   (drop)="onDrop($event)"
+  (click)="onBoardClick($event)"
   (mousemove)="onBoardMouseMove($event)"
   (mouseup)="onBoardMouseUp()"
 >
+  <p id="game-board-instructions" class="sr-only">
+    Choose a service in the palette with Enter or Space. Use the arrow keys to place it, then Enter to confirm or Escape to cancel.
+    Focus a service and use arrow keys to move it. Focus a service port and press Enter, then focus a compatible port and press Enter to connect.
+    Focus a connection and press Enter to select it. Press Delete to remove the selected service or connection.
+  </p>
+  <div class="sr-only" role="status" aria-live="polite" aria-atomic="true">{{ keyboardAnnouncement() }}</div>
+
   <!-- Grid lines -->
   <div
     class="absolute inset-0 pointer-events-none"
@@ -64,6 +76,9 @@
       (portDragStart)="onPortDragStart($event)"
       (portDragEnd)="onPortDragEnd($event)"
       (moveDragStart)="onMoveDragStart($event)"
+      (keyboardSelect)="onServiceKeyboardSelect($event)"
+      (keyboardMove)="onServiceKeyboardMove($event)"
+      (portActivate)="onPortActivate($event)"
     />
   }
 

@@ -98,6 +98,9 @@ export class GameStateService {
     // Currently dragged service type (for placement preview)
     readonly draggingType = signal<ServiceType | null>(null);
 
+    // True when placement was started by keyboard activation in the palette.
+    readonly keyboardPlacementActive = signal(false);
+
     // Undo/Redo stacks
     private readonly undoStack = signal<Board[]>([]);
     private readonly redoStack = signal<Board[]>([]);
@@ -136,6 +139,8 @@ export class GameStateService {
         this.lockedServiceIds.set(new Set(lockedServiceIds));
         this.selectedServiceId.set(null);
         this.selectedConnectionId.set(null);
+        this.draggingType.set(null);
+        this.keyboardPlacementActive.set(false);
         this.editable.set(true);
         this.resetHistory();
     }
@@ -310,6 +315,7 @@ export class GameStateService {
         if (!this.canUndo()) return;
         const stack = this.undoStack();
         const snapshot = stack[stack.length - 1];
+        if (!snapshot) return;
         this.undoStack.update((s) => s.slice(0, -1));
         this.redoStack.update((s) => [...s, this.snapshot()]);
         this.restore(snapshot);
@@ -322,6 +328,7 @@ export class GameStateService {
         if (!this.canRedo()) return;
         const stack = this.redoStack();
         const snapshot = stack[stack.length - 1];
+        if (!snapshot) return;
         this.redoStack.update((s) => s.slice(0, -1));
         this.undoStack.update((s) => [...s, this.snapshot()]);
         this.restore(snapshot);

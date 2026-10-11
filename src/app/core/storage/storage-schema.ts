@@ -30,7 +30,7 @@ export function sanitizeBoard(raw: { services?: unknown; connections?: unknown }
     for (const item of Array.isArray(raw.services) ? raw.services : []) {
         if (!isRecord(item)) continue;
         const { id, type, gridX, gridY } = item;
-        if (typeof id !== 'string' || !isServiceType(type)) continue;
+        if (typeof id !== 'string' || id.trim().length === 0 || !isServiceType(type)) continue;
         if (typeof gridX !== 'number' || typeof gridY !== 'number') continue;
         if (services.some((s) => s.id === id)) continue;
         if (!canPlaceOnBoard(services, GRID_CONFIG, type, gridX, gridY)) continue;
@@ -39,12 +39,24 @@ export function sanitizeBoard(raw: { services?: unknown; connections?: unknown }
 
     const connections: Connection[] = [];
     for (const item of Array.isArray(raw.connections) ? raw.connections : []) {
-        if (!isRecord(item) || typeof item['id'] !== 'string') continue;
+        if (!isRecord(item) || typeof item['id'] !== 'string' || item['id'].trim().length === 0) continue;
         const source = item['source'];
         const target = item['target'];
         if (!isRecord(source) || !isRecord(target)) continue;
-        if (typeof source['serviceId'] !== 'string' || typeof source['portIndex'] !== 'number') continue;
-        if (typeof target['serviceId'] !== 'string' || typeof target['portIndex'] !== 'number') continue;
+        if (
+            typeof source['serviceId'] !== 'string' ||
+            source['serviceId'].length === 0 ||
+            typeof source['portIndex'] !== 'number' ||
+            !Number.isInteger(source['portIndex'])
+        )
+            continue;
+        if (
+            typeof target['serviceId'] !== 'string' ||
+            target['serviceId'].length === 0 ||
+            typeof target['portIndex'] !== 'number' ||
+            !Number.isInteger(target['portIndex'])
+        )
+            continue;
         const conn: Connection = {
             id: item['id'],
             source: { serviceId: source['serviceId'], portIndex: source['portIndex'] },
@@ -56,7 +68,10 @@ export function sanitizeBoard(raw: { services?: unknown; connections?: unknown }
         const filter = item['filter'];
         if (isRecord(filter) && Array.isArray(filter['methods'])) {
             const methods = filter['methods'].filter((m): m is RequestMethod => METHODS.includes(m as string));
-            const weight = typeof filter['weight'] === 'number' ? Math.min(100, Math.max(1, filter['weight'])) : 100;
+            const weight =
+                typeof filter['weight'] === 'number' && Number.isFinite(filter['weight'])
+                    ? Math.min(100, Math.max(1, filter['weight']))
+                    : 100;
             conn.filter = { methods: [...new Set(methods)], weight };
         }
         connections.push(conn);
@@ -94,13 +109,19 @@ export function sanitizeProgress(raw: unknown): ChallengeProgress {
     if (!isRecord(raw)) return progress;
 
     for (const [id, value] of Object.entries(raw)) {
-        if (!isRecord(value) || typeof value['starsEarned'] !== 'number') continue;
+        if (
+            id.trim().length === 0 ||
+            !isRecord(value) ||
+            typeof value['starsEarned'] !== 'number' ||
+            !Number.isFinite(value['starsEarned'])
+        )
+            continue;
         const entry: ChallengeProgressEntry = {
             starsEarned: Math.min(3, Math.max(0, Math.floor(value['starsEarned']))),
         };
         for (const key of ['bestP95', 'bestErrorRate', 'bestCost'] as const) {
             const stat = value[key];
-            if (typeof stat === 'number' && Number.isFinite(stat)) entry[key] = stat;
+            if (typeof stat === 'number' && Number.isFinite(stat) && stat >= 0) entry[key] = stat;
         }
         progress[id] = entry;
     }

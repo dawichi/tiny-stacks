@@ -13,14 +13,16 @@
       </div>
       <div class="flex-1 min-w-0">
         <h3 class="text-sm font-semibold text-slate-800 truncate">{{ config()!.name }}</h3>
-        <span class="text-[10px] text-slate-400">
+        <span class="text-[10px] text-slate-600">
           {{ config()!.gridWidth }}&times;{{ config()!.gridHeight }} &middot;
           ({{ service()!.gridX }}, {{ service()!.gridY }})
         </span>
       </div>
       <button
+        type="button"
         class="w-6 h-6 flex items-center justify-center rounded-md
-               hover:bg-slate-200/60 transition-colors text-slate-400 hover:text-slate-600"
+               hover:bg-slate-200/60 transition-colors text-slate-600 hover:text-slate-600"
+        aria-label="Close service details"
         (click)="onClose()"
       >
         <lucide-icon [img]="XIcon" [size]="14" />
@@ -28,12 +30,12 @@
     </div>
 
     <!-- Description -->
-    <p class="text-xs text-slate-500 mb-3 leading-relaxed">{{ config()!.description }}</p>
+    <p class="text-xs text-slate-600 mb-3 leading-relaxed">{{ config()!.description }}</p>
 
     @if (isOrigin() && sandboxMode()) {
       <div class="mb-3 rounded-lg bg-white/55 p-2.5">
         <div class="mb-1 flex items-center justify-between">
-          <label for="origin-rps" class="text-[10px] font-semibold uppercase tracking-wider text-slate-400">
+          <label for="origin-rps" class="text-[10px] font-semibold uppercase tracking-wider text-slate-600">
             Traffic rate
           </label>
           <span class="text-xs font-semibold text-slate-700">{{ originRps() }} req/s</span>
@@ -62,13 +64,13 @@
     <!-- Live stats (when simulation running + not Origin) -->
     @if (showLiveStats()) {
       <div class="mb-3">
-        <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Live</h4>
+        <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Live</h4>
         <div class="grid grid-cols-2 gap-1.5">
           <div class="stat-card bg-white/50 rounded-md p-1.5">
             <div class="text-xs font-semibold text-slate-700">
               {{ liveVisual()!.queueCount }}/{{ liveVisual()!.queueCapacity }}
             </div>
-            <div class="text-[9px] text-slate-400 mb-1">Queue</div>
+            <div class="text-[9px] text-slate-600 mb-1">Queue</div>
             <div class="h-1 bg-black/10 rounded-full overflow-hidden">
               <div
                 class="h-full rounded-full transition-all duration-200"
@@ -81,7 +83,7 @@
             <div class="text-xs font-semibold text-slate-700">
               {{ liveVisual()!.processingCount }}/{{ liveVisual()!.maxConcurrency }}
             </div>
-            <div class="text-[9px] text-slate-400 mb-1">Processing</div>
+            <div class="text-[9px] text-slate-600 mb-1">Processing</div>
             <div class="h-1 bg-black/10 rounded-full overflow-hidden">
               <div
                 class="h-full rounded-full bg-blue-400 transition-all duration-200"
@@ -96,21 +98,21 @@
     <!-- Cache stats (only for Cache services when sim running) -->
     @if (showCacheStats()) {
       <div class="mb-3">
-        <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Cache</h4>
+        <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Cache</h4>
         <div class="grid grid-cols-3 gap-1.5">
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-emerald-600">{{ cacheHitRate() }}%</div>
-            <div class="text-[9px] text-slate-400">Hit Rate</div>
+            <div class="text-[9px] text-slate-600">Hit Rate</div>
           </div>
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-slate-700">
               {{ cacheStats()!.hitCount }}/{{ cacheStats()!.missCount }}
             </div>
-            <div class="text-[9px] text-slate-400">Hit/Miss</div>
+            <div class="text-[9px] text-slate-600">Hit/Miss</div>
           </div>
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-slate-700">{{ cacheStats()!.cachedResources }}</div>
-            <div class="text-[9px] text-slate-400">Cached</div>
+            <div class="text-[9px] text-slate-600">Cached</div>
           </div>
         </div>
       </div>
@@ -119,19 +121,19 @@
     <!-- Simulation params (static config) -->
     @if (!isOrigin()) {
       <div class="mb-3">
-        <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Config</h4>
+        <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Config</h4>
         <div class="grid grid-cols-3 gap-1.5">
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-slate-700">{{ config()!.baseProcessingTime }}ms</div>
-            <div class="text-[9px] text-slate-400">Latency</div>
+            <div class="text-[9px] text-slate-600">Latency</div>
           </div>
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-slate-700">{{ config()!.maxConcurrency }}</div>
-            <div class="text-[9px] text-slate-400">Concurrency</div>
+            <div class="text-[9px] text-slate-600">Concurrency</div>
           </div>
           <div class="stat-card bg-white/50 rounded-md p-1.5 text-center">
             <div class="text-xs font-semibold text-slate-700">{{ config()!.queueSize }}</div>
-            <div class="text-[9px] text-slate-400">Queue</div>
+            <div class="text-[9px] text-slate-600">Queue</div>
           </div>
         </div>
       </div>
@@ -139,7 +141,7 @@
 
     <!-- Ports -->
     <div class="mb-3">
-      <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">Ports</h4>
+      <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">Ports</h4>
       <div class="flex flex-col gap-1">
         @for (port of config()!.ports; track $index) {
           <div class="flex items-center gap-2 text-xs text-slate-600">
@@ -148,7 +150,7 @@
               [style.background-color]="portColor(port.direction)"
             ></span>
             <span class="capitalize">{{ port.direction }}</span>
-            <span class="text-slate-400">&middot; {{ port.edge }}</span>
+            <span class="text-slate-600">&middot; {{ port.edge }}</span>
           </div>
         }
       </div>
@@ -157,18 +159,20 @@
     <!-- Connections -->
     @if (serviceConnections().length > 0) {
       <div class="mb-3">
-        <h4 class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1.5">
+        <h4 class="text-[10px] font-semibold text-slate-600 uppercase tracking-wider mb-1.5">
           Connections ({{ serviceConnections().length }})
         </h4>
         <div class="flex flex-col gap-1">
           @for (conn of serviceConnections(); track conn.id) {
             <div class="flex items-center gap-1.5 text-xs text-slate-600 group">
-              <span class="text-slate-400">{{ conn.direction }}</span>
+              <span class="text-slate-600">{{ conn.direction }}</span>
               <span class="truncate flex-1">{{ conn.otherServiceName }}</span>
               <button
                 class="w-4 h-4 flex items-center justify-center rounded
-                       opacity-0 group-hover:opacity-100 transition-opacity
+                       opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity
                        hover:bg-red-100 text-red-400 hover:text-red-600"
+                type="button"
+                [attr.aria-label]="'Remove connection to ' + conn.otherServiceName"
                 [disabled]="!editable()"
                 (click)="onDeleteConnection(conn.id)"
               >
@@ -181,7 +185,7 @@
     }
 
     @if (isLocked()) {
-      <div class="text-center text-[10px] text-slate-400 border border-slate-200/60 rounded-lg py-2">
+      <div class="text-center text-[10px] text-slate-600 border border-slate-200/60 rounded-lg py-2">
         Pre-placed challenge service
       </div>
     } @else {

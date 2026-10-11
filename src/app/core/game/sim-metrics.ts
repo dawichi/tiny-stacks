@@ -7,7 +7,7 @@ export function percentile(values: readonly number[], p: number): number {
     if (values.length === 0) return 0;
     const sorted = [...values].sort((a, b) => a - b);
     const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil((p / 100) * sorted.length) - 1));
-    return sorted[index];
+    return sorted[index] ?? 0;
 }
 
 function mean(values: readonly number[]): number {
@@ -58,9 +58,9 @@ export class MetricsCollector {
     /** Drop samples that fell out of the rolling window */
     prune(now: number): void {
         const cutoff = now - RATE_WINDOW_MS;
-        while (this.completionTimes.length > 0 && this.completionTimes[0] <= cutoff) this.completionTimes.shift();
-        while (this.failureTimes.length > 0 && this.failureTimes[0] <= cutoff) this.failureTimes.shift();
-        while (this.costSamples.length > 0 && this.costSamples[0].t <= cutoff) this.costSamples.shift();
+        while (this.completionTimes[0] !== undefined && this.completionTimes[0] <= cutoff) this.completionTimes.shift();
+        while (this.failureTimes[0] !== undefined && this.failureTimes[0] <= cutoff) this.failureTimes.shift();
+        while (this.costSamples[0] !== undefined && this.costSamples[0].t <= cutoff) this.costSamples.shift();
     }
 
     snapshot(activeRequests: number, asyncPending: number): SimMetrics {

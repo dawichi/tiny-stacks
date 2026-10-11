@@ -1,12 +1,11 @@
 import { DecimalPipe } from '@angular/common';
-import { Component, computed, DestroyRef, inject, OnInit, signal } from '@angular/core';
+import { Component, computed, DestroyRef, ElementRef, effect, inject, OnInit, signal, viewChild } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ArrowLeft, LucideAngularModule, Play, RotateCcw, Star } from 'lucide-angular';
 import type { RunMetric } from '../../core/challenges/challenge.model';
 import { ChallengeService } from '../../core/challenges/challenge.service';
 import { GameStateService } from '../../core/game/game-state.service';
-import type { SimSpeed } from '../../core/game/tick-engine.service';
 import { SIM_SPEEDS, TickEngineService } from '../../core/game/tick-engine.service';
 import { GameBoardComponent } from '../board/game-board.component';
 import { ServiceInspectorComponent } from '../inspector/service-inspector.component';
@@ -43,6 +42,9 @@ export class ChallengePageComponent implements OnInit {
     private readonly challengeService = inject(ChallengeService);
     private readonly tickEngine = inject(TickEngineService);
     protected readonly gameState = inject(GameStateService);
+    private readonly gameBoard = viewChild(GameBoardComponent);
+    private readonly briefingPrimaryAction = viewChild<ElementRef<HTMLButtonElement>>('briefingPrimaryAction');
+    private readonly resultsPrimaryAction = viewChild<ElementRef<HTMLButtonElement>>('resultsPrimaryAction');
 
     protected readonly ArrowLeftIcon = ArrowLeft;
     protected readonly PlayIcon = Play;
@@ -66,13 +68,16 @@ export class ChallengePageComponent implements OnInit {
         const earned = this.challengeService.progress()[challenge.id]?.starsEarned ?? 0;
         return [earned >= 1, earned >= 2, earned >= 3] as const;
     });
+    protected readonly bestStarsLabel = computed(
+        () => `${this.starStatus().filter((earned) => earned).length} of 3 best stars earned`,
+    );
     protected readonly starDetails = computed(() => {
         const challenge = this.challenge();
         const result = this.lastResult();
         if (!challenge) return [];
         return challenge.stars.map((tier, index) => ({
             label: tier.label,
-            earned: result ? result.tiers[index].earned : this.starStatus()[index],
+            earned: result?.tiers[index]?.earned ?? this.starStatus()[index] ?? false,
         }));
     });
     protected readonly hasNextLevel = computed(() => {
@@ -86,6 +91,17 @@ export class ChallengePageComponent implements OnInit {
         if (!current || current.durationMs <= 0) return 0;
         return Math.min(100, (current.elapsedMs / current.durationMs) * 100);
     });
+
+    constructor() {
+        effect(() => {
+            const showBriefing = this.showBriefing();
+            const showResults = this.results() !== null;
+            queueMicrotask(() => {
+                if (showBriefing && this.showBriefing()) this.briefingPrimaryAction()?.nativeElement.focus();
+                else if (showResults && this.results()) this.resultsPrimaryAction()?.nativeElement.focus();
+            });
+        });
+    }
 
     ngOnInit(): void {
         this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
@@ -104,6 +120,7 @@ export class ChallengePageComponent implements OnInit {
     protected onStart(): void {
         this.showBriefing.set(false);
         this.tickEngine.start();
+        queueMicrotask(() => this.gameBoard()?.focusBoard());
     }
 
     protected onDeploy(): void {
@@ -114,6 +131,7 @@ export class ChallengePageComponent implements OnInit {
     protected onKeepBuilding(): void {
         this.challengeService.keepBuilding();
         this.tickEngine.start();
+        queueMicrotask(() => this.gameBoard()?.focusBoard());
     }
 
     protected onRetry(): void {
@@ -127,7 +145,8 @@ export class ChallengePageComponent implements OnInit {
         if (!current) return;
         const index = definitions.findIndex((d) => d.id === current.id);
         if (index >= 0 && index < definitions.length - 1) {
-            this.router.navigate(['/challenges', definitions[index + 1].id]);
+            const next = definitions[index + 1];
+            if (next) this.router.navigate(['/challenges', next.id]);
         }
     }
 
@@ -135,10 +154,39 @@ export class ChallengePageComponent implements OnInit {
         this.router.navigate(['/challenges']);
     }
 
+    protected onDialogKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            if (this.showBriefing()) this.onBack();
+            else this.onKeepBuilding();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
+        const dialog = event.currentTarget as HTMLElement;
+        const focusable = [
+            ...dialog.querySelectorAll<HTMLElement>(
+                'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+            ),
+        ];
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+            event.preventDefault();
+            dialog.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
+    }
+
     protected cycleSpeed(): void {
         const index = SIM_SPEEDS.indexOf(this.speed());
-        const next: SimSpeed = SIM_SPEEDS[(index + 1) % SIM_SPEEDS.length];
-        this.tickEngine.speed.set(next);
+        const next = SIM_SPEEDS[(index + 1) % SIM_SPEEDS.length];
+        if (next !== undefined) this.tickEngine.speed.set(next);
     }
 
     protected formatMetric(metric: RunMetric, value: number): string {

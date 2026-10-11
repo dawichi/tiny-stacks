@@ -1,4 +1,4 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, ElementRef, inject, signal, viewChild } from '@angular/core';
 import { LucideAngularModule, Settings, X } from 'lucide-angular';
 import { StorageService } from '../../core/storage/storage.service';
 
@@ -7,16 +7,25 @@ import { StorageService } from '../../core/storage/storage.service';
     standalone: true,
     imports: [LucideAngularModule],
     template: `
-        <button class="settings-btn" (click)="open.set(true)" title="Settings">
+        <button class="settings-btn" type="button" (click)="openSettings($event)" aria-label="Open settings" title="Settings">
             <lucide-icon [img]="SettingsIcon" [size]="18" />
         </button>
 
         @if (open()) {
             <div class="overlay" (click)="close()">
-                <div class="modal" (click)="$event.stopPropagation()">
+                <div
+                    #dialogElement
+                    class="modal"
+                    role="dialog"
+                    aria-modal="true"
+                    aria-labelledby="settings-title"
+                    tabindex="-1"
+                    (click)="$event.stopPropagation()"
+                    (keydown)="onDialogKeydown($event)"
+                >
                     <div class="modal-header">
-                        <h2>Settings</h2>
-                        <button class="close-btn" (click)="close()">
+                        <h2 id="settings-title">Settings</h2>
+                        <button #closeButton class="close-btn" type="button" aria-label="Close settings" (click)="close()">
                             <lucide-icon [img]="XIcon" [size]="16" />
                         </button>
                     </div>
@@ -60,7 +69,7 @@ import { StorageService } from '../../core/storage/storage.service';
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #94a3b8;
+            color: #475569;
             cursor: pointer;
             transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
         }
@@ -111,7 +120,7 @@ import { StorageService } from '../../core/storage/storage.service';
             border-radius: 6px;
             border: none;
             background: transparent;
-            color: #94a3b8;
+            color: #475569;
             cursor: pointer;
             display: flex;
             align-items: center;
@@ -132,7 +141,7 @@ import { StorageService } from '../../core/storage/storage.service';
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.07em;
-            color: #ef4444;
+            color: #b91c1c;
             margin: 0 0 0.625rem;
         }
         .danger-row {
@@ -160,7 +169,7 @@ import { StorageService } from '../../core/storage/storage.service';
         }
         .danger-desc {
             font-size: 0.75rem;
-            color: #94a3b8;
+            color: #475569;
             margin: 0;
         }
 
@@ -170,7 +179,7 @@ import { StorageService } from '../../core/storage/storage.service';
             border-radius: 0.375rem;
             border: 1px solid #fca5a5;
             background: white;
-            color: #ef4444;
+            color: #b91c1c;
             font-size: 0.8rem;
             font-weight: 500;
             cursor: pointer;
@@ -191,7 +200,7 @@ import { StorageService } from '../../core/storage/storage.service';
             padding: 0.375rem 0.75rem;
             border-radius: 0.375rem;
             border: none;
-            background: #ef4444;
+            background: #b91c1c;
             color: white;
             font-size: 0.8rem;
             font-weight: 500;
@@ -199,7 +208,7 @@ import { StorageService } from '../../core/storage/storage.service';
             transition: background 150ms ease;
         }
         .btn-confirm:hover {
-            background: #dc2626;
+            background: #991b1b;
         }
 
         .btn-cancel {
@@ -226,11 +235,54 @@ export class SettingsComponent {
     protected readonly open = signal(false);
     protected readonly confirming = signal(false);
 
+    private readonly dialogElement = viewChild<ElementRef<HTMLDivElement>>('dialogElement');
+    private readonly closeButton = viewChild<ElementRef<HTMLButtonElement>>('closeButton');
+    private returnFocusTarget: HTMLElement | null = null;
+
     private readonly storage = inject(StorageService);
+
+    protected openSettings(event: MouseEvent): void {
+        this.returnFocusTarget = event.currentTarget as HTMLElement;
+        this.open.set(true);
+        window.setTimeout(() => this.closeButton()?.nativeElement.focus());
+    }
 
     protected close(): void {
         this.open.set(false);
         this.confirming.set(false);
+        queueMicrotask(() => this.returnFocusTarget?.focus());
+    }
+
+    protected onDialogKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.close();
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
+        const dialog = this.dialogElement()?.nativeElement;
+        if (!dialog) return;
+        const focusable = [
+            ...dialog.querySelectorAll<HTMLElement>(
+                'a[href], button:not(:disabled), input:not(:disabled), select:not(:disabled), textarea:not(:disabled), [tabindex]:not([tabindex="-1"])',
+            ),
+        ];
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+            event.preventDefault();
+            dialog.focus();
+            return;
+        }
+
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     }
 
     protected reset(): void {

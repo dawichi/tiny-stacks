@@ -17,6 +17,12 @@ export function mustFind<T>(items: T[], pred: (item: T) => boolean, label: strin
     return found;
 }
 
+export function mustAt<T>(items: readonly T[], index: number, label: string): T {
+    const item = items[index];
+    if (item === undefined) throw new Error(`Test setup: ${label} missing at index ${index}`);
+    return item;
+}
+
 export function mustPlace(gameState: GameStateService, type: ServiceType, x: number, y: number): PlacedService {
     const placed = gameState.addService(type, x, y);
     if (!placed) throw new Error(`Test setup: could not place ${type} at (${x},${y})`);

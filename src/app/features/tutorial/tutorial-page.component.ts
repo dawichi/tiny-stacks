@@ -1,4 +1,4 @@
-import { Component, computed, effect, inject, OnDestroy, OnInit, signal } from '@angular/core';
+import { Component, computed, ElementRef, effect, inject, OnDestroy, OnInit, signal, viewChild } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ArrowLeft, CheckCircle, LucideAngularModule, Trophy } from 'lucide-angular';
 import { TickEngineService } from '../../core/game/tick-engine.service';
@@ -42,12 +42,14 @@ export class TutorialPageComponent implements OnInit, OnDestroy {
     private readonly router = inject(Router);
     private readonly simulation = inject(TickEngineService);
     protected readonly tutorial = inject(TutorialService);
+    private readonly gameBoard = viewChild(GameBoardComponent);
 
     protected readonly ArrowLeftIcon = ArrowLeft;
     protected readonly CheckCircleIcon = CheckCircle;
     protected readonly TrophyIcon = Trophy;
 
     protected readonly showCelebration = signal(false);
+    private readonly celebrationPrimaryAction = viewChild<ElementRef<HTMLButtonElement>>('celebrationPrimaryAction');
 
     // Snapshot taken before init() so we don't trigger celebration on re-entry
     private _initiallyComplete = false;
@@ -64,6 +66,9 @@ export class TutorialPageComponent implements OnInit, OnDestroy {
             if (this.tutorial.isComplete() && !this._initiallyComplete) {
                 this.tutorial.complete();
                 this.showCelebration.set(true);
+                queueMicrotask(() => {
+                    if (this.showCelebration()) this.celebrationPrimaryAction()?.nativeElement.focus();
+                });
             }
         });
     }
@@ -85,5 +90,30 @@ export class TutorialPageComponent implements OnInit, OnDestroy {
 
     protected goToChallenges(): void {
         this.router.navigate(['/challenges']);
+    }
+
+    protected onCelebrationKeydown(event: KeyboardEvent): void {
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            this.showCelebration.set(false);
+            queueMicrotask(() => this.gameBoard()?.focusBoard());
+            return;
+        }
+        if (event.key !== 'Tab') return;
+
+        const dialog = event.currentTarget as HTMLElement;
+        const focusable = [...dialog.querySelectorAll<HTMLElement>('button:not(:disabled), a[href]')];
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (!first || !last) {
+            event.preventDefault();
+            dialog.focus();
+        } else if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault();
+            last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault();
+            first.focus();
+        }
     }
 }
