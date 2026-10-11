@@ -1,6 +1,6 @@
 import { Component, inject } from '@angular/core';
 import { RouterLink } from '@angular/router';
-import { BookOpen, Hammer, LucideAngularModule, Trophy } from 'lucide-angular';
+import { BookOpen, Github, Hammer, LucideAngularModule, Trophy } from 'lucide-angular';
 import { TutorialService } from '../../core/tutorial/tutorial.service';
 
 @Component({
@@ -147,6 +147,16 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
 
         </div>
       </div>
+
+      <a
+        class="source-link"
+        href="https://github.com/dawichi/tiny-stacks"
+        target="_blank"
+        rel="noopener noreferrer"
+      >
+        <lucide-icon [img]="GithubIcon" [size]="16" />
+        <span>Source code</span>
+      </a>
     </div>
   `,
     styles: [
@@ -203,6 +213,34 @@ import { TutorialService } from '../../core/tutorial/tutorial.service';
       justify-content: center;
       transition: background-color 200ms ease;
     }
+
+    .source-link {
+      position: absolute;
+      bottom: 1rem;
+      left: 1rem;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgba(255, 255, 255, 0.9);
+      border-radius: 9999px;
+      background: rgba(255, 255, 255, 0.7);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+      color: #64748b;
+      font-size: 0.75rem;
+      font-weight: 500;
+      text-decoration: none;
+      transition: background 150ms ease, color 150ms ease, box-shadow 150ms ease;
+    }
+
+    .source-link:hover,
+    .source-link:focus-visible {
+      background: rgba(255, 255, 255, 0.95);
+      color: #334155;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.12);
+    }
   `,
     ],
 })
@@ -210,6 +248,7 @@ export class HomePageComponent {
     protected readonly tutorial = inject(TutorialService);
 
     protected readonly BookOpenIcon = BookOpen;
+    protected readonly GithubIcon = Github;
     protected readonly HammerIcon = Hammer;
     protected readonly TrophyIcon = Trophy;
 }
