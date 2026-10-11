@@ -34,8 +34,8 @@ The full dependency report is produced with `bun audit`. CI fails for critical a
 - Source: `dawichi/tiny-stacks` on GitHub.
 - Vercel deploys automatically through its Git integration when changes are pushed to `main`. The Vercel deployment history inspected for this documentation work showed production deployments from that repository and branch.
 - The maintainer has chosen to keep direct pushes to `main`; pull requests are not required and CI is not a pre-deployment gate. A push may reach production before its GitHub Actions run completes. This is an explicit, scoped release exception: run the full local validation before pushing, then inspect CI and Vercel immediately after the push. If CI fails, fix forward or roll back the deployment.
-- Vercel's project inspection reported no custom root directory, install command, build command, or output directory override. Project settings are managed in Vercel and are not stored in this repository.
-- There is no checked-in Vercel configuration file or deployment workflow. Vercel builds and serves the frontend.
+- Vercel's project inspection reported no custom root directory, build command, or output directory override. Project-level settings and the Git integration remain managed in Vercel.
+- [vercel.json](../../vercel.json) pins the dependency install to Bun `1.3.4` with the frozen lockfile. Vercel auto-detects the Angular build/output settings and serves the frontend.
 
 Treat a push to `main` as a production release. Direct-to-main release is authorized for this project; otherwise, do not push or change production without an explicit user request.
 

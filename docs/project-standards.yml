@@ -161,7 +161,7 @@ compliance:
       evidence: "GitHub Actions runs bun install --frozen-lockfile; a local frozen install succeeds without lockfile changes."
     - id: DEP-003
       status: compliant
-      evidence: "package.json and CI pin Bun 1.3.4. Read-only Vercel project inspection confirmed Node.js 24.x as its build runtime; the static app does not run a project-managed Node server."
+      evidence: "package.json, CI, and vercel.json pin Bun 1.3.4 for local, CI, and Vercel dependency installation. Vercel uses Node.js 24.x as its build runtime; the static app does not run a project-managed Node server."
     - id: DEP-004
       status: compliant
       evidence: "bun pm untrusted reports only @parcel/watcher's blocked build-from-source script; installation, tests, and build succeed without trusting it."

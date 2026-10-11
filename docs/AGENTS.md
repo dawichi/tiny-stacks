@@ -51,6 +51,6 @@ GitHub Actions runs the locked install, `bun run typecheck`, `bun run check`, `b
 ## Safe change boundaries
 
 - A push to `main` triggers the Vercel production deployment. Do not push, roll back, or otherwise change production unless the user explicitly asks.
-- Vercel project settings and Git integration are managed outside this repository. Do not invent or commit environment values or credentials.
+- Vercel project settings and Git integration are managed outside this repository; `vercel.json` pins the dependency install to Bun `1.3.4`. Do not invent or commit environment values or credentials.
 - There is no server-side user data to back up. Sandbox state and progress live in the player's browser storage.
 - Do not add authentication, a backend, telemetry, or new external services without an explicit product decision.
